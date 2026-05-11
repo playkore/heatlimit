@@ -522,6 +522,7 @@
       text-align: center;
       display: grid;
       gap: 12px;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
     }
 
     .overlay-title {
@@ -536,9 +537,65 @@
       color: var(--muted);
     }
 
-    .reward-list {
+    .overlay-list {
+      min-height: 0;
+      max-height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       display: grid;
       gap: 8px;
+    }
+
+    .overlay-list.deck-view {
+      gap: 6px;
+      text-align: left;
+    }
+
+    .deck-entry {
+      border: var(--line);
+      background: #fff;
+      min-height: 56px;
+      padding: 7px 8px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 8px;
+      align-items: center;
+      text-align: left;
+    }
+
+    .deck-entry.upgraded {
+      background: #f4f1da;
+    }
+
+    .deck-entry-icon {
+      width: 38px;
+      height: 38px;
+      border: 2px solid currentColor;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      filter: grayscale(1) contrast(1.8);
+      flex: 0 0 auto;
+    }
+
+    .deck-entry-name {
+      font-size: 15px;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 3px;
+    }
+
+    .deck-entry-desc {
+      font-size: 12px;
+      line-height: 1.15;
+      color: var(--muted);
+    }
+
+    .deck-entry-count {
+      font-size: 12px;
+      font-weight: 900;
+      align-self: start;
+      opacity: .75;
     }
 
     .reward-button {
@@ -587,6 +644,12 @@
       color: white;
       font-size: 20px;
       font-weight: 900;
+    }
+
+    .overlay-actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
     }
 
     .cycle-banner {
@@ -664,15 +727,14 @@
         <section class="card-area" id="cardArea"></section>
         <div class="deck-strip">
           <div class="deck-stats" id="drawPilePanel">
-            <div class="deck-stats-label">Карт в колоде</div>
+            <div class="deck-stats-label">Доступно</div>
             <div class="deck-stats-value" id="drawPileCount">0</div>
           </div>
           <button class="deck-button" id="deckButton" type="button">
-            МОЯ КОЛОДА
-            <span>пока без списка</span>
+            МУЛЬТИТУЛ
           </button>
           <div class="deck-stats" id="discardPanel">
-            <div class="deck-stats-label">Сброшено</div>
+            <div class="deck-stats-label">Использовано</div>
             <div class="deck-stats-value" id="discardCount">0</div>
           </div>
         </div>
@@ -685,8 +747,11 @@
       <div class="overlay-card">
         <div class="overlay-title" id="overlayTitle">ГОТОВО</div>
         <div class="overlay-text" id="overlayText">Поломка устранена.</div>
-        <div class="reward-list" id="rewardList"></div>
-        <button class="big-button" id="restartButton" type="button">НОВЫЙ ЗАПУСК</button>
+        <div class="overlay-list" id="rewardList"></div>
+        <div class="overlay-actions">
+          <button class="big-button" id="overlayCloseButton" type="button" style="display:none">ЗАКРЫТЬ</button>
+          <button class="big-button" id="restartButton" type="button" style="display:none">НОВЫЙ ЗАПУСК</button>
+        </div>
       </div>
     </div>
   </main>

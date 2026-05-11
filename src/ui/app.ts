@@ -22,13 +22,19 @@ export function bootstrapApp(): void {
   let game = createGame({ seed: sessionSeed() });
   let busy = false;
   let previousSnapshot: Snapshot | null = null;
+  let deckOpen = false;
 
   function render(reason: RenderReason = "refresh") {
     const currentSnapshot = snapshotState(game.state);
     const visibleCards = game.state.hand.slice(0, HAND_SIZE).map((cardObj) => getCardProps(cardObj));
+    const showDeck = game.state.phase === "combat" && deckOpen;
+
+    if (game.state.phase !== "combat" && deckOpen) {
+      deckOpen = false;
+    }
 
     renderGame(ui, game, busy, playCard);
-    renderOverlay(ui, game, chooseReward);
+    renderOverlay(ui, game, busy, deckOpen, showDeck, chooseReward, closeDeck);
     scheduleHandAnimations(ui, previousSnapshot, currentSnapshot, reason, visibleCards);
     previousSnapshot = currentSnapshot;
   }
@@ -36,6 +42,7 @@ export function bootstrapApp(): void {
   function resetGame() {
     game = createGame({ seed: sessionSeed() });
     busy = false;
+    deckOpen = false;
     render("draw");
   }
 
@@ -89,10 +96,36 @@ export function bootstrapApp(): void {
     }
 
     game.chooseReward(index);
+    deckOpen = false;
     render("draw");
   }
 
+  function openDeck() {
+    if (busy || game.state.phase !== "combat") {
+      return;
+    }
+
+    deckOpen = true;
+    render("refresh");
+  }
+
+  function closeDeck() {
+    if (!deckOpen) {
+      return;
+    }
+
+    deckOpen = false;
+    render("refresh");
+  }
+
   ui.restartButton.addEventListener("click", resetGame);
+  ui.deckButton.addEventListener("click", openDeck);
+  ui.overlayCloseButton.addEventListener("click", closeDeck);
+  ui.overlay.addEventListener("click", (event) => {
+    if (event.target === ui.overlay && deckOpen && game.state.phase === "combat") {
+      closeDeck();
+    }
+  });
   render("draw");
 }
 
@@ -128,6 +161,7 @@ function createUi() {
     discardPanel: get("discardPanel"),
     discardCount: get("discardCount"),
     deckButton: get("deckButton") as HTMLButtonElement,
+    overlayCloseButton: get("overlayCloseButton") as HTMLButtonElement,
     overlay: get("overlay"),
     overlayTitle: get("overlayTitle"),
     overlayText: get("overlayText"),
@@ -177,6 +211,7 @@ function renderGame(
   ui.enemyEmoji.textContent = defect.emoji;
   ui.enemy.classList.toggle("boss", !!defect.boss);
   ui.actionsText.textContent = `${state.actions}/${MAX_ACTIONS}`;
+  ui.deckButton.disabled = busy || state.phase !== "combat";
   ui.heatText.textContent = `${state.heat}/${MAX_HEAT}`;
   ui.hpText.textContent = `${state.hp}/${state.maxHp}`;
   ui.heatFill.style.width = `${(100 * state.heat) / MAX_HEAT}%`;
@@ -239,21 +274,39 @@ function renderHand(
 function renderOverlay(
   ui: Ui,
   game: GameEngine,
+  busy: boolean,
+  deckOpen: boolean,
+  showDeck: boolean,
   onChooseReward: (index: number) => void,
+  onCloseDeck: () => void,
 ): void {
   const state = game.state;
-  const visible = state.phase !== "combat";
+  const visible = state.phase !== "combat" || showDeck;
   ui.overlay.classList.toggle("show", visible);
+  ui.overlay.classList.toggle("deck-mode", showDeck);
 
   if (!visible) {
     ui.rewardList.innerHTML = "";
     ui.restartButton.style.display = "none";
+    ui.overlayCloseButton.style.display = "none";
+    return;
+  }
+
+  if (showDeck) {
+    ui.overlayTitle.textContent = "МУЛЬТИТУЛ";
+    ui.overlayText.textContent = `${state.deck.length} инструментов.`;
+    ui.restartButton.style.display = "none";
+    ui.overlayCloseButton.style.display = "block";
+    ui.rewardList.classList.add("deck-view");
+    renderDeckList(ui, state.deck);
     return;
   }
 
   ui.overlayTitle.textContent = state.overlayTitle;
   ui.overlayText.textContent = state.overlayText;
   ui.restartButton.style.display = state.phase === "ended" ? "block" : "none";
+  ui.overlayCloseButton.style.display = "none";
+  ui.rewardList.classList.remove("deck-view");
   ui.rewardList.innerHTML = "";
 
   if (state.phase !== "reward") {
@@ -270,6 +323,27 @@ function renderOverlay(
       onChooseReward(index);
     });
     ui.rewardList.appendChild(button);
+  });
+}
+
+function renderDeckList(ui: Ui, deck: readonly { id: string; upgraded?: boolean }[]): void {
+  ui.rewardList.innerHTML = "";
+
+  deck.forEach((cardObj, index) => {
+    const card = getCardProps(cardObj);
+    const row = document.createElement("div");
+    row.className = `deck-entry ${cardObj.upgraded ? "upgraded" : ""}`;
+    row.innerHTML = `
+      <div class="deck-entry-icon emoji">${card.icon}</div>
+      <div>
+        <div class="deck-entry-name">${card.name}</div>
+        <div class="deck-entry-desc">${card.effects
+          .map((effect) => `${effect.icon} ${effect.text}`)
+          .join(" · ")}</div>
+      </div>
+      <div class="deck-entry-count">#${index + 1}</div>
+    `;
+    ui.rewardList.appendChild(row);
   });
 }
 
