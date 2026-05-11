@@ -29,7 +29,7 @@ describe("profile storage", () => {
     const profile = {
       version: 1 as const,
       runNumber: 4,
-      savedCards: [{ id: "laser" as const }, { id: "clamp" as const, upgraded: true }],
+      savedCards: [{ id: "laser" as const }, { id: "clamp" as const }],
     };
 
     saveProfile(storage, profile);
@@ -77,10 +77,10 @@ describe("profile storage", () => {
     const deck = buildStartingDeck({
       version: 1,
       runNumber: 2,
-      savedCards: [{ id: "laser" }, { id: "clamp", upgraded: true }],
+      savedCards: [{ id: "laser" }, { id: "clamp" }],
     });
 
-    expect(deck.map((card) => `${card.id}${card.upgraded ? "+" : ""}`)).toEqual([
+    expect(deck.map((card) => card.id)).toEqual([
       "clamp",
       "clamp",
       "clamp",
@@ -91,7 +91,7 @@ describe("profile storage", () => {
       "patch",
       "weld",
       "laser",
-      "clamp+",
+      "clamp",
     ]);
   });
 

@@ -89,10 +89,7 @@ function normalizeDeckCard(value: unknown): DeckCard | null {
   }
 
   const cardId = value.id as CardId;
-  return {
-    id: cardId,
-    upgraded: value.upgraded === true ? true : undefined,
-  };
+  return { id: cardId };
 }
 
 function normalizePositiveInteger(value: unknown, fallback: number): number {

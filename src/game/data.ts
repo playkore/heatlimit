@@ -1,7 +1,6 @@
 import { bossDefectEntry, regularDefects } from "./defects/registry";
 import { cloneCard, effectText, getCardProps, type DeckCard } from "./cards/helpers";
-import { cardDb, cardRewardPool, initialDeck, upgradeableIds, type CardId } from "./cards/registry";
-import { modulesDb, type ModuleId } from "./modules/registry";
+import { cardDb, cardRewardPool, initialDeck, type CardId } from "./cards/registry";
 
 export interface DefectDefinition {
   id: string;
@@ -16,12 +15,6 @@ export interface DefectDefinition {
 
 export interface DefectInstance extends DefectDefinition {
   hp: number;
-}
-
-export interface ModuleDefinition {
-  name: string;
-  icon: string;
-  text: string;
 }
 
 export const MAX_HEAT = 10;
@@ -42,5 +35,5 @@ export function makeDefectForStage(stage: number): DefectInstance {
   };
 }
 
-export { cardDb, cardRewardPool, cloneCard, effectText, getCardProps, initialDeck, modulesDb, upgradeableIds };
-export type { CardId, DeckCard, ModuleId };
+export { cardDb, cardRewardPool, cloneCard, effectText, getCardProps, initialDeck };
+export type { CardId, DeckCard };

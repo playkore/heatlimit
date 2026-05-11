@@ -1,5 +1,3 @@
-import type { GameRule } from "../rules/api";
-
 export interface EffectDef {
   icon: string;
   text: string;
@@ -14,7 +12,6 @@ export interface DefectView {
 
 export interface DeckCardView {
   id: string;
-  upgraded?: boolean;
 }
 
 export interface GameStateView {
@@ -29,9 +26,7 @@ export interface GameStateView {
   hand: readonly DeckCardView[];
   drawPileCount: number;
   discardCount: number;
-  modules: readonly string[];
   defect: DefectView | null;
-  flags: Readonly<Record<string, boolean>>;
 }
 
 export interface GameEvent {
@@ -43,7 +38,6 @@ export interface GameEvent {
 
 export interface ResolvedCard {
   id: string;
-  upgraded: boolean;
   name: string;
   icon: string;
   tags: readonly CardTag[];
@@ -71,7 +65,6 @@ export interface CardPlayContext {
   exhaustSelf(): void;
   addBonus(amount: number): void;
   addCycleShield(amount: number): void;
-  addRule(rule: GameRule): void;
   emit(event: GameEvent): void;
   setMessage(html: string): void;
   meltIce(): void;
@@ -100,17 +93,6 @@ export interface SimpleCardDefinitionOptions {
   effects: readonly EffectDef[];
   text: string;
   effect: SimpleCardEffect;
-  upgrade?: {
-    effects: readonly EffectDef[];
-    text: string;
-    effect: SimpleCardEffect;
-  };
-}
-
-export interface CardUpgradeDefinition {
-  effects: readonly EffectDef[];
-  text: string;
-  logic: CardLogic;
 }
 
 export interface CardDefinition {
@@ -120,7 +102,6 @@ export interface CardDefinition {
   effects: readonly EffectDef[];
   text: string;
   logic: CardLogic;
-  upgrade?: CardUpgradeDefinition;
 }
 
 function createLogic(effect: SimpleCardEffect): CardLogic {
@@ -178,17 +159,5 @@ export function makeSimpleCardDefinition(options: SimpleCardDefinitionOptions): 
         ctx.setMessage(`<b>${ctx.card.name}</b>: ${ctx.card.text}`);
       },
     },
-    upgrade: options.upgrade
-      ? {
-          effects: options.upgrade.effects,
-          text: options.upgrade.text,
-          logic: {
-            play(ctx) {
-              createLogic({ ...options.effect, ...options.upgrade?.effect }).play(ctx);
-              ctx.setMessage(`<b>${ctx.card.name}</b>: ${ctx.card.text}`);
-            },
-          },
-        }
-      : undefined,
   };
 }

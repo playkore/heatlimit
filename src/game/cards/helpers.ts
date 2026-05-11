@@ -3,11 +3,10 @@ import { cardDb, type CardId } from "./registry";
 
 export interface DeckCard {
   id: CardId;
-  upgraded?: boolean;
 }
 
 export function cloneCard(card: DeckCard): DeckCard {
-  return { id: card.id, upgraded: !!card.upgraded };
+  return { id: card.id };
 }
 
 export function effectText(effects: readonly EffectDef[]): string {
@@ -16,13 +15,11 @@ export function effectText(effects: readonly EffectDef[]): string {
 
 export function getCardProps(card: DeckCard): ResolvedCard {
   const base = cardDb[card.id];
-  const resolved = card.upgraded && base.upgrade ? { ...base, ...base.upgrade } : base;
 
   return {
-    ...resolved,
+    ...base,
     id: card.id,
-    upgraded: !!card.upgraded,
-    name: `${base.name}${card.upgraded ? "+" : ""}`,
+    name: base.name,
     icon: base.icon,
   };
 }

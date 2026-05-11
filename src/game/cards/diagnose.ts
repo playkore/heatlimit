@@ -7,9 +7,4 @@ export const diagnoseCard = makeSimpleCardDefinition({
   effects: [{ icon: "🃏", text: "+2" }],
   effect: { draw: 2 },
   text: "Найдены новые варианты.",
-  upgrade: {
-    effects: [{ icon: "🃏", text: "+3" }],
-    effect: { draw: 3 },
-    text: "Глубокая диагностика добирает три карты.",
-  },
 });

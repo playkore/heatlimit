@@ -1,4 +1,4 @@
-import { FINAL_STAGE, HAND_SIZE, MAX_ACTIONS, MAX_HEAT, getCardProps, modulesDb } from "../game/data";
+import { FINAL_STAGE, HAND_SIZE, MAX_ACTIONS, MAX_HEAT, getCardProps } from "../game/data";
 import { createGame, type GameEngine, type GameEvent, type RewardOption } from "../game/engine";
 import type { GameStateView, ResolvedCard } from "../game/api";
 import { appendSavedCard, buildStartingDeck, clearProfile, createDefaultProfile, loadProfile, saveProfile, type StorageLike } from "./profile";
@@ -243,8 +243,6 @@ function createUi() {
     actionsText: get("actionsText"),
     heatText: get("heatText"),
     heatFill: get("heatFill"),
-    modules: get("modules"),
-    moduleList: get("moduleList"),
     enemyTitle: get("enemyTitle"),
     enemySubtitle: get("enemySubtitle"),
     enemyEmoji: get("enemyEmoji"),
@@ -322,7 +320,7 @@ function renderGame(
   ui.stageText.textContent = `ЗАБЕГ ${runNumber} · ${defect.boss ? `БОСС ${state.stage}/${FINAL_STAGE}` : `СПУТНИК ${state.stage}/${FINAL_STAGE}`}`;
   ui.enemyTitle.textContent = defect.title;
   const extra = defect.id === "ice" && state.iceMelted ? "лёд расплавлен" : defect.subtitle;
-  ui.enemySubtitle.textContent = `${extra} · цикл: 🔥+${defect.heatPerCycle}${state.modules.includes("badbattery") ? "+1" : ""}`;
+  ui.enemySubtitle.textContent = `${extra} · цикл: 🔥+${defect.heatPerCycle}`;
   ui.enemyEmoji.textContent = defect.emoji;
   ui.enemy.classList.toggle("boss", !!defect.boss);
   ui.actionsText.textContent = `${state.actions}/${MAX_ACTIONS}`;
@@ -337,31 +335,7 @@ function renderGame(
   ui.drawPileCount.textContent = String(state.drawPile.length);
   ui.discardCount.textContent = String(state.discard.length);
 
-  renderModules(ui, state.modules);
   renderHand(ui, game, busy, onPlay);
-}
-
-function renderModules(
-  ui: Ui,
-  modules: readonly (keyof typeof modulesDb)[],
-): void {
-  ui.modules.innerHTML = "";
-  if (modules.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "empty-modules";
-    empty.textContent = "МОДУЛЕЙ НЕТ · НАГРАДЫ ПОСЛЕ РЕМОНТА";
-    ui.modules.appendChild(empty);
-    return;
-  }
-
-  for (const id of modules) {
-    const module = modulesDb[id];
-    const chip = document.createElement("div");
-    chip.className = "module-chip emoji";
-    chip.setAttribute("aria-label", `${module.name}: ${module.text}`);
-    chip.textContent = module.icon;
-    ui.modules.appendChild(chip);
-  }
 }
 
 function renderHand(
@@ -375,7 +349,7 @@ function renderHand(
     const card = getCardProps(cardObj);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `card ${cardObj.upgraded ? "upgraded" : ""}`;
+    button.className = "card";
     button.disabled = busy || game.state.phase !== "combat" || game.state.actions >= MAX_ACTIONS;
     button.dataset.cardIndex = String(index);
     button.innerHTML = cardMarkup(card);
@@ -404,7 +378,6 @@ function renderOverlay(
   ui.overlay.classList.toggle("deck-mode", showDeck);
 
   if (!visible) {
-    ui.moduleList.innerHTML = "";
     ui.rewardList.innerHTML = "";
     ui.rewardList.classList.remove("deck-view");
     ui.restartButton.style.display = "none";
@@ -414,10 +387,9 @@ function renderOverlay(
 
   if (showDeck) {
     ui.overlayTitle.textContent = "МУЛЬТИТУЛ";
-    ui.overlayText.textContent = `${state.deck.length} инструментов · ${state.modules.length} модулей.`;
+    ui.overlayText.textContent = `${state.deck.length} инструментов.`;
     ui.restartButton.style.display = "none";
     ui.overlayCloseButton.style.display = "block";
-    renderModuleSummary(ui, state.modules);
     ui.rewardList.classList.add("deck-view");
     renderDeckList(ui, state.deck);
     return;
@@ -425,7 +397,6 @@ function renderOverlay(
 
   ui.overlayTitle.textContent = state.overlayTitle;
   ui.overlayCloseButton.style.display = "none";
-  ui.moduleList.innerHTML = "";
   ui.rewardList.classList.remove("deck-view");
   ui.rewardList.innerHTML = "";
 
@@ -481,7 +452,7 @@ function renderDeckList(ui: Ui, deck: readonly DeckCard[]): void {
   deck.forEach((cardObj, index) => {
     const card = getCardProps(cardObj);
     const row = document.createElement("div");
-    row.className = `deck-entry ${cardObj.upgraded ? "upgraded" : ""}`;
+    row.className = "deck-entry";
     row.innerHTML = `
       <div class="deck-entry-icon emoji">${card.icon}</div>
       <div>
@@ -496,37 +467,6 @@ function renderDeckList(ui: Ui, deck: readonly DeckCard[]): void {
   });
 }
 
-function renderModuleSummary(ui: Ui, modules: readonly (keyof typeof modulesDb)[]): void {
-  ui.moduleList.innerHTML = "";
-
-  const heading = document.createElement("div");
-  heading.className = "module-summary-heading";
-  heading.textContent = "АКТИВНЫЕ МОДУЛИ";
-  ui.moduleList.appendChild(heading);
-
-  if (modules.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "module-summary-empty";
-    empty.textContent = "МОДУЛЕЙ НЕТ";
-    ui.moduleList.appendChild(empty);
-    return;
-  }
-
-  for (const id of modules) {
-    const module = modulesDb[id];
-    const row = document.createElement("div");
-    row.className = "module-entry";
-    row.innerHTML = `
-      <div class="module-entry-icon emoji">${module.icon}</div>
-      <div>
-        <div class="module-entry-name">${module.name}</div>
-        <div class="module-entry-desc">${module.text}</div>
-      </div>
-    `;
-    ui.moduleList.appendChild(row);
-  }
-}
-
 function renderSaveCardList(
   ui: Ui,
   cards: readonly DeckCard[],
@@ -537,7 +477,7 @@ function renderSaveCardList(
     const card = getCardProps(cardObj);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `reward-button save-button ${cardObj.upgraded ? "upgraded" : ""} ${selectedSaveCardIndex === index ? "selected" : ""}`;
+    button.className = `reward-button save-button ${selectedSaveCardIndex === index ? "selected" : ""}`;
     button.disabled = selectedSaveCardIndex !== null;
     button.innerHTML = saveCardMarkup(card);
     button.addEventListener("click", () => {
@@ -736,7 +676,7 @@ function animateCardFlight(
 ): void {
   const clone = document.createElement("button");
   clone.type = "button";
-  clone.className = `card fly ${options.card.upgraded ? "upgraded" : ""}`;
+  clone.className = "card fly";
   clone.innerHTML = cardMarkup(options.card);
   clone.setAttribute("aria-hidden", "true");
   clone.tabIndex = -1;

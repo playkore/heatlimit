@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { createGame } from "./engine";
 import { playCardById, runScenario } from "./scenario";
 import { HAND_SIZE } from "./data";
-import { cardDb } from "./cards/registry";
 
 describe("game engine", () => {
   it("plays a seeded run and advances to the next stage deterministically", () => {
@@ -29,7 +28,7 @@ describe("game engine", () => {
     expect(game.state.defect?.id).toBe("ice");
   });
 
-  it("applies reward upgrades back into the run deck", () => {
+  it("adds a rewarded card back into the run deck", () => {
     const game = createGame({
       seed: 7,
       deck: [
@@ -50,21 +49,20 @@ describe("game engine", () => {
     }
 
     expect(game.state.phase).toBe("reward");
-    const upgradeIndex = game.state.pendingRewards.findIndex((reward) => reward.kind === "upgrade");
-    expect(upgradeIndex).toBeGreaterThanOrEqual(0);
+    expect(game.state.pendingRewards[0]?.kind).toBe("card");
 
-    game.chooseReward(upgradeIndex);
+    game.chooseReward(0);
 
     expect(game.state.phase).toBe("combat");
     expect(game.state.stage).toBe(2);
-    expect(game.state.deck.some((card) => card.id === "clamp" && card.upgraded)).toBe(true);
+    expect(game.state.deck.length).toBe(9);
+    expect(game.state.acquiredCards).toHaveLength(1);
   });
 
   it("tracks reward cards so they can be saved after death", () => {
     const game = createGame({
       seed: 11,
       deck: [{ id: "laser" }, { id: "laser" }, { id: "laser" }, { id: "laser" }],
-      modules: [],
       stage: 1,
     });
 
@@ -84,7 +82,6 @@ describe("game engine", () => {
     const game = createGame({
       seed: 12,
       deck: [{ id: "clamp" }, { id: "scan" }, { id: "cool" }],
-      modules: [],
       stage: 1,
     });
 
@@ -98,27 +95,10 @@ describe("game engine", () => {
     expect(game.state.discard.length).toBe(0);
   });
 
-  it("applies heat handling and radiator save deterministically", () => {
-    const game = createGame({
-      seed: 3,
-      deck: [{ id: "laser" }, { id: "laser" }, { id: "laser" }],
-      modules: ["radiator"],
-      stage: 1,
-    });
-
-    playCardById(game, "laser");
-    playCardById(game, "laser");
-    playCardById(game, "laser");
-
-    expect(game.state.heat).toBeLessThanOrEqual(10);
-    expect(game.state.radiatorUsed).toBe(true);
-  });
-
   it("ends the run immediately when a card overheats the tool", () => {
     const game = createGame({
       seed: 19,
       deck: [{ id: "laser" }, { id: "laser" }, { id: "laser" }],
-      modules: [],
       stage: 1,
     });
 
@@ -139,7 +119,6 @@ describe("game engine", () => {
     const game = createGame({
       seed: 21,
       deck: [{ id: "clamp" }],
-      modules: [],
       stage: 3,
     });
 
@@ -156,7 +135,6 @@ describe("game engine", () => {
     const game = createGame({
       seed: 31,
       deck: [{ id: "diagnose" }, { id: "clamp" }, { id: "clamp" }, { id: "clamp" }],
-      modules: [],
       stage: 1,
     });
 
@@ -173,7 +151,6 @@ describe("game engine", () => {
     const game = createGame({
       seed: 41,
       deck: [{ id: "clamp" }, { id: "clamp" }],
-      modules: [],
       stage: 5,
     });
 
@@ -189,31 +166,4 @@ describe("game engine", () => {
     expect(game.state.hp).toBe(game.state.maxHp - 4);
   });
 
-  it("keeps bad battery scoped to repair cards", () => {
-    const original = cardDb.clamp;
-    try {
-      (cardDb as any).clamp = {
-        ...original,
-        tags: ["utility"],
-        logic: original.logic,
-      };
-
-      const game = createGame({
-        seed: 51,
-        deck: [{ id: "clamp" }],
-        modules: ["badbattery"],
-        stage: 1,
-      });
-
-      game.state.hand = [{ id: "clamp" }];
-      game.state.drawPile = [];
-      game.state.discard = [];
-
-      game.playCard(0);
-
-      expect(game.state.hp).toBe(game.state.maxHp - 3);
-    } finally {
-      (cardDb as any).clamp = original;
-    }
-  });
 });

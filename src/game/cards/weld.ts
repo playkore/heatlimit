@@ -10,12 +10,4 @@ export const weldCard = makeSimpleCardDefinition({
   ],
   effect: { damage: 7, heat: 3, meltsIce: true },
   text: "Шов наложен. Жар растёт.",
-  upgrade: {
-    effects: [
-      { icon: "🔧", text: "+9" },
-      { icon: "🔥", text: "+3" },
-    ],
-    effect: { damage: 9 },
-    text: "Сварка стала мощнее без лишнего нагрева.",
-  },
 });

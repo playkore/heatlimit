@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ModuleId, CardId, DeckCard } from "./data";
+import type { CardId, DeckCard } from "./data";
 import { createGame } from "./engine";
 import { playCardById } from "./scenario";
 import { createSeededRng } from "./rng";
@@ -11,14 +11,12 @@ function makeDeck(cards: readonly CardId[]): DeckCard[] {
 function runBalanceScript(options: {
   seed: number;
   deck: readonly CardId[];
-  modules?: readonly ModuleId[];
   turns: readonly CardId[];
 }) {
   const game = createGame({
     seed: options.seed,
     rng: createSeededRng(options.seed),
     deck: makeDeck(options.deck),
-    modules: options.modules ? [...options.modules] : undefined,
   });
 
   for (const turn of options.turns) {
@@ -33,7 +31,7 @@ function runBalanceScript(options: {
 }
 
 describe("balance scenarios", () => {
-  it("wins with a fixed deck, module set, and scripted turns", () => {
+  it("wins with a fixed deck and scripted turns", () => {
     const game = runBalanceScript({
       seed: 17,
       deck: ["clamp", "clamp", "clamp", "clamp", "clamp", "clamp", "clamp", "clamp"],
@@ -46,7 +44,7 @@ describe("balance scenarios", () => {
     expect(game.state.pendingRewards.length).toBeGreaterThan(0);
   });
 
-  it("loses when the same deck overheats without a safety module", () => {
+  it("loses when laser cards overheat the tool", () => {
     const game = runBalanceScript({
       seed: 17,
       deck: ["laser", "laser", "laser", "laser"],

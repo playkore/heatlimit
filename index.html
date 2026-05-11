@@ -113,32 +113,6 @@
       text-transform: uppercase;
     }
 
-    .modules {
-      display: flex;
-      gap: 4px;
-      min-height: 24px;
-      overflow: hidden;
-      align-items: center;
-    }
-
-    .module-chip {
-      border: 2px solid var(--ink);
-      background: #fff;
-      min-width: 24px;
-      height: 24px;
-      display: grid;
-      place-items: center;
-      font-size: 14px;
-      line-height: 1;
-      filter: grayscale(1) contrast(1.6);
-    }
-
-    .empty-modules {
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1;
-    }
-
     .bar-wrap {
       display: grid;
       gap: 4px;
@@ -369,15 +343,6 @@
       transition: transform 80ms linear, box-shadow 80ms linear;
     }
 
-    .card.upgraded::after {
-      content: "+";
-      position: absolute;
-      top: -2px;
-      right: 4px;
-      font-size: 22px;
-      font-weight: 900;
-    }
-
     .card:active:not(:disabled) {
       transform: translate(4px, 4px);
       box-shadow: 0 0 0 #111;
@@ -586,7 +551,7 @@
       text-align: center;
       display: grid;
       gap: 12px;
-      grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
       min-height: 0;
     }
 
@@ -599,67 +564,6 @@
     .overlay-text {
       font-size: 15px;
       line-height: 1.22;
-      color: var(--muted);
-    }
-
-    .module-list {
-      display: grid;
-      gap: 6px;
-      min-height: 0;
-      align-content: start;
-      text-align: left;
-    }
-
-    .module-summary-heading {
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-
-    .module-summary-empty {
-      border: var(--line);
-      background: #fff;
-      padding: 7px 8px;
-      font-size: 13px;
-      line-height: 1.2;
-      font-weight: 900;
-      text-align: left;
-    }
-
-    .module-entry {
-      border: var(--line);
-      background: #fff;
-      padding: 7px 8px;
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 8px;
-      align-items: center;
-      text-align: left;
-    }
-
-    .module-entry-icon {
-      width: 32px;
-      height: 32px;
-      border: 2px solid currentColor;
-      display: grid;
-      place-items: center;
-      font-size: 18px;
-      filter: grayscale(1) contrast(1.8);
-    }
-
-    .module-entry-name {
-      font-size: 14px;
-      line-height: 1;
-      font-weight: 900;
-      margin-bottom: 3px;
-    }
-
-    .module-entry-desc {
-      font-size: 12px;
-      line-height: 1.15;
       color: var(--muted);
     }
 
@@ -689,10 +593,6 @@
       gap: 8px;
       align-items: center;
       text-align: left;
-    }
-
-    .deck-entry.upgraded {
-      background: #f4f1da;
     }
 
     .deck-entry-icon {
@@ -828,7 +728,6 @@
           <button class="menu-button" id="menuButton" type="button">МЕНЮ</button>
           <span>ХОД <b id="actionsText">0/2</b></span>
         </div>
-        <div class="modules" id="modules"></div>
         <div class="bar-wrap">
           <div class="bar-label">
             <span>🔥 ПЕРЕГРЕВ</span>
@@ -885,7 +784,6 @@
       <div class="overlay-card">
         <div class="overlay-title" id="overlayTitle">ГОТОВО</div>
         <div class="overlay-text" id="overlayText">Поломка устранена.</div>
-        <div class="module-list" id="moduleList"></div>
         <div class="overlay-list" id="rewardList"></div>
         <div class="overlay-actions">
           <button class="big-button" id="overlayCloseButton" type="button" style="display:none">ЗАКРЫТЬ</button>

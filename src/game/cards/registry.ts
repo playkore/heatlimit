@@ -29,15 +29,6 @@ export const cardDb = {
 
 export type CardId = keyof typeof cardDb;
 
-export const upgradeableIds: readonly CardId[] = [
-  "clamp",
-  "scan",
-  "cool",
-  "patch",
-  "weld",
-  "diagnose",
-];
-
 export const cardRewardPool: readonly CardId[] = [
   "vent",
   "strike",
