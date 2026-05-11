@@ -16,16 +16,17 @@ import {
   type DefectInstance,
   type ModuleId,
 } from "./data";
+import {
+  type CardPlayContext,
+  type GameEvent,
+  type GameRule,
+  type GameStateView,
+  type ResolvedCard,
+} from "./api";
 import { createSeededRng, type Rng } from "./rng";
 
 export type GamePhase = "combat" | "reward" | "ended";
-
-export type GameEvent =
-  | { type: "banner"; text: string }
-  | { type: "float"; text: string; tone?: "heat" | "info" }
-  | { type: "enemy-hit"; amount: number }
-  | { type: "enemy-pulse" }
-  | { type: "shake" };
+export type { GameEvent } from "./api";
 
 export interface RewardOptionBase {
   kind: "card" | "upgrade" | "module";
@@ -86,6 +87,16 @@ export interface GameState {
   bannerText: string;
   overlayTitle: string;
   overlayText: string;
+  rules: GameRule[];
+}
+
+interface CurrentPlay {
+  card: ResolvedCard;
+  cardObj: DeckCard;
+  events: GameEvent[];
+  dealtDamage: number;
+  exhausted: boolean;
+  messageSet: boolean;
 }
 
 function clamp(min: number, value: number, max: number): number {
@@ -99,6 +110,7 @@ export class GameEngine {
   private readonly initialDeck: DeckCard[];
   private readonly initialModules: ModuleId[];
   private readonly initialStage: number;
+  private currentPlay: CurrentPlay | null = null;
 
   constructor(options: GameOptions) {
     this.rng = options.rng ?? createSeededRng(options.seed);
@@ -135,46 +147,31 @@ export class GameEngine {
     const events: GameEvent[] = [];
 
     this.state.hand.splice(index, 1);
-    if (!card.exhaust) {
-      this.state.discard.push(cardObj);
-    }
-
     this.state.actions += 1;
+    this.currentPlay = {
+      card,
+      cardObj,
+      events,
+      dealtDamage: 0,
+      exhausted: false,
+      messageSet: false,
+    };
 
-    const damage = this.computeDamage(card, events);
-    const heatDelta = this.computeHeatDelta(card, damage);
+    card.logic.play(this.createCardPlayContext(card, events));
 
-    if (card.meltsIce && this.state.defect?.id === "ice" && !this.state.iceMelted) {
-      this.state.iceMelted = true;
-      this.state.bannerText = "ЛЁД РАСПЛАВЛЕН";
-      events.push({ type: "banner", text: "ЛЁД РАСПЛАВЛЕН" });
+    if (!this.currentPlay.messageSet) {
+      this.state.messageHtml = `<b>${card.name}</b>: ${card.text}`;
     }
 
-    if (damage > 0) {
-      this.state.hp = Math.max(0, this.state.hp - damage);
-      events.push({ type: "enemy-hit", amount: damage });
-    } else {
+    if (this.currentPlay.dealtDamage === 0) {
       events.push({ type: "enemy-pulse" });
     }
 
-    this.applyHeat(heatDelta, events);
-
-    if (card.bonus) {
-      this.state.bonus += card.bonus;
-      events.push({ type: "float", text: `⬆️+${card.bonus}`, tone: "info" });
+    if (!this.currentPlay.exhausted) {
+      this.state.discard.push(cardObj);
     }
 
-    if (card.cycleShield) {
-      this.state.cycleShield += card.cycleShield;
-      events.push({ type: "float", text: `🛡️-${card.cycleShield}`, tone: "heat" });
-    }
-
-    if (card.draw) {
-      this.drawCards(card.draw);
-      events.push({ type: "float", text: `🃏+${card.draw}`, tone: "info" });
-    }
-
-    this.state.messageHtml = `<b>${card.name}</b>: ${card.text}`;
+    this.currentPlay = null;
 
     if (this.state.hp <= 0) {
       this.completeVictory();
@@ -282,6 +279,7 @@ export class GameEngine {
       bannerText: "",
       overlayTitle: "",
       overlayText: "",
+      rules: [],
     };
   }
 
@@ -309,6 +307,7 @@ export class GameEngine {
     this.state.overlayText = "";
     this.state.bannerText = "";
     this.state.messageHtml = defect.text;
+    this.state.rules = [];
 
     this.drawHand();
   }
@@ -351,16 +350,89 @@ export class GameEngine {
     return this.state.modules.includes(id);
   }
 
-  private computeDamage(card: ReturnType<typeof getCardProps>, events: GameEvent[]): number {
-    let damage = card.damage ?? 0;
+  private createStateView(): GameStateView {
+    return {
+      phase: this.state.phase,
+      stage: this.state.stage,
+      hp: this.state.hp,
+      maxHp: this.state.maxHp,
+      heat: this.state.heat,
+      actions: this.state.actions,
+      bonus: this.state.bonus,
+      cycleShield: this.state.cycleShield,
+      hand: this.state.hand.map(cloneCard),
+      drawPileCount: this.state.drawPile.length,
+      discardCount: this.state.discard.length,
+      modules: [...this.state.modules],
+      defect: this.state.defect ? { id: this.state.defect.id, boss: this.state.defect.boss } : null,
+      flags: {
+        iceMelted: this.state.iceMelted,
+        bossShieldUsed: this.state.bossShieldUsed,
+        firstCardHeatReduced: this.state.firstCardHeatReduced,
+        radiatorUsed: this.state.radiatorUsed,
+      },
+    };
+  }
 
-    if (card.damagePerHeat) {
-      damage += Math.max(1, this.state.heat) * card.damagePerHeat;
+  private createCardPlayContext(card: ResolvedCard, events: GameEvent[]): CardPlayContext {
+    const stateView = this.createStateView();
+    const engine = this;
+
+    return {
+      card,
+      state: stateView,
+      rng: this.rng,
+      dealDamage(amount: number) {
+        engine.dealDamage(amount, card, events);
+      },
+      addHeat(amount: number) {
+        engine.addHeat(amount, card, events);
+      },
+      setHeat(value: number) {
+        engine.setHeat(value, events);
+      },
+      drawCards(count: number) {
+        engine.drawCards(count);
+        if (count > 0) {
+          events.push({ type: "float", text: `🃏+${count}`, tone: "info" });
+        }
+      },
+      discardHand() {
+        engine.discardHand();
+      },
+      exhaustSelf() {
+        engine.exhaustSelf();
+      },
+      addBonus(amount: number) {
+        engine.addBonus(amount, events);
+      },
+      addCycleShield(amount: number) {
+        engine.addCycleShield(amount, events);
+      },
+      addRule(rule: GameRule) {
+        engine.state.rules.push(rule);
+      },
+      emit(event: GameEvent) {
+        events.push(event);
+      },
+      setMessage(html: string) {
+        engine.state.messageHtml = html;
+        if (engine.currentPlay) {
+          engine.currentPlay.messageSet = true;
+        }
+      },
+      meltIce() {
+        engine.meltIce(events);
+      },
+    };
+  }
+
+  private dealDamage(amount: number, card: ResolvedCard, events: GameEvent[]): void {
+    if (amount <= 0) {
+      return;
     }
 
-    if (damage <= 0) {
-      return 0;
-    }
+    let damage = amount;
 
     if (this.state.bonus > 0) {
       damage += this.state.bonus;
@@ -375,16 +447,16 @@ export class GameEngine {
       damage += 2;
     }
 
-    if (this.hasModule("arc")) {
+    if (damage > 0 && card.tags.includes("repair")) {
       this.state.repairCardsPlayed += 1;
-      if (this.state.repairCardsPlayed % 3 === 0) {
+      if (this.state.repairCardsPlayed % 3 === 0 && this.hasModule("arc")) {
         damage += 2;
         this.state.bannerText = "СТАБИЛИЗАТОР +2";
         events.push({ type: "banner", text: "СТАБИЛИЗАТОР +2" });
       }
     }
 
-    if (this.state.defect?.id === "ice" && !this.state.iceMelted && !card.meltsIce) {
+    if (this.state.defect?.id === "ice" && !this.state.iceMelted) {
       damage = Math.max(1, damage - 1);
     }
 
@@ -395,17 +467,22 @@ export class GameEngine {
       events.push({ type: "banner", text: "БРОНЯ КОНТУРА -2" });
     }
 
-    return damage;
+    this.state.hp = Math.max(0, this.state.hp - damage);
+    events.push({ type: "enemy-hit", amount: damage });
+
+    if (this.currentPlay) {
+      this.currentPlay.dealtDamage += damage;
+    }
   }
 
-  private computeHeatDelta(card: ReturnType<typeof getCardProps>, damage: number): { set?: number; delta?: number } {
-    if (card.heatSet !== undefined) {
-      return { set: card.heatSet };
+  private addHeat(amount: number, card: ResolvedCard, events: GameEvent[]): void {
+    if (amount === 0) {
+      return;
     }
 
-    let delta = card.heat ?? 0;
+    let delta = amount;
 
-    if (this.state.defect?.id === "spark" && damage > 0) {
+    if (delta > 0 && this.state.defect?.id === "spark" && this.currentPlay?.dealtDamage) {
       delta += 1;
     }
 
@@ -414,25 +491,41 @@ export class GameEngine {
       this.state.firstCardHeatReduced = true;
     }
 
-    return { delta };
-  }
-
-  private applyHeat(heatInfo: { set?: number; delta?: number }, events: GameEvent[]): void {
-    if (heatInfo.set !== undefined) {
-      this.state.heat = heatInfo.set;
-      events.push({ type: "float", text: `🔥=${heatInfo.set}`, tone: "heat" });
-      this.maybeRadiatorSave(events);
-      return;
-    }
-
-    const delta = heatInfo.delta ?? 0;
-    if (delta === 0) {
-      return;
-    }
-
     this.state.heat = clamp(0, this.state.heat + delta, MAX_HEAT);
     events.push({ type: "float", text: `🔥${delta > 0 ? "+" : ""}${delta}`, tone: "heat" });
     this.maybeRadiatorSave(events);
+  }
+
+  private setHeat(value: number, events: GameEvent[]): void {
+    this.state.heat = clamp(0, value, MAX_HEAT);
+    events.push({ type: "float", text: `🔥=${this.state.heat}`, tone: "heat" });
+    this.maybeRadiatorSave(events);
+  }
+
+  private addBonus(amount: number, events: GameEvent[]): void {
+    this.state.bonus += amount;
+    events.push({ type: "float", text: `⬆️+${amount}`, tone: "info" });
+  }
+
+  private addCycleShield(amount: number, events: GameEvent[]): void {
+    this.state.cycleShield += amount;
+    events.push({ type: "float", text: `🛡️-${amount}`, tone: "heat" });
+  }
+
+  private exhaustSelf(): void {
+    if (this.currentPlay) {
+      this.currentPlay.exhausted = true;
+    }
+  }
+
+  private meltIce(events: GameEvent[]): void {
+    if (this.state.defect?.id !== "ice" || this.state.iceMelted) {
+      return;
+    }
+
+    this.state.iceMelted = true;
+    this.state.bannerText = "ЛЁД РАСПЛАВЛЕН";
+    events.push({ type: "banner", text: "ЛЁД РАСПЛАВЛЕН" });
   }
 
   private maybeRadiatorSave(events: GameEvent[]): void {
