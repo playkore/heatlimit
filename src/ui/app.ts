@@ -1,6 +1,8 @@
 import { FINAL_STAGE, HAND_SIZE, MAX_ACTIONS, MAX_HEAT, getCardProps, modulesDb } from "../game/data";
 import { createGame, type GameEngine, type GameEvent, type RewardOption } from "../game/engine";
 import type { GameStateView, ResolvedCard } from "../game/api";
+import { appendSavedCard, buildStartingDeck, loadProfile, saveProfile, type StorageLike } from "./profile";
+import type { DeckCard } from "../game/cards/helpers";
 
 const sessionSeed = () => (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0;
 
@@ -17,12 +19,39 @@ function wait(ms: number): Promise<void> {
   });
 }
 
+function getPersistentStorage(): StorageLike {
+  const memory = new Map<string, string>();
+
+  try {
+    const storage = window.localStorage;
+    const probeKey = "__heat_limit_probe__";
+    storage.setItem(probeKey, "1");
+    storage.removeItem(probeKey);
+    return storage;
+  } catch {
+    return {
+      getItem(key: string): string | null {
+        return memory.get(key) ?? null;
+      },
+      setItem(key: string, value: string): void {
+        memory.set(key, value);
+      },
+      removeItem(key: string): void {
+        memory.delete(key);
+      },
+    };
+  }
+}
+
 export function bootstrapApp(): void {
   const ui = createUi();
-  let game = createGame({ seed: sessionSeed() });
+  const storage = getPersistentStorage();
+  let profile = loadProfile(storage);
+  let game = createGame({ seed: sessionSeed(), deck: buildStartingDeck(profile) });
   let busy = false;
   let previousSnapshot: Snapshot | null = null;
   let deckOpen = false;
+  let selectedSaveCardIndex: number | null = null;
 
   function render(reason: RenderReason = "refresh") {
     const currentSnapshot = snapshotState(game.state);
@@ -33,16 +62,26 @@ export function bootstrapApp(): void {
       deckOpen = false;
     }
 
-    renderGame(ui, game, busy, playCard);
-    renderOverlay(ui, game, busy, deckOpen, showDeck, chooseReward, closeDeck);
+    renderGame(ui, game, busy, profile.runNumber, playCard);
+    renderOverlay(ui, game, busy, deckOpen, showDeck, selectedSaveCardIndex, chooseReward, chooseSaveCard, closeDeck);
     scheduleHandAnimations(ui, previousSnapshot, currentSnapshot, reason, visibleCards);
     previousSnapshot = currentSnapshot;
   }
 
-  function resetGame() {
-    game = createGame({ seed: sessionSeed() });
+  function startNewRun() {
+    if (game.state.phase === "ended" && game.state.endReason === "death" && game.state.acquiredCards.length > 0 && selectedSaveCardIndex === null) {
+      return;
+    }
+
+    profile = {
+      ...profile,
+      runNumber: profile.runNumber + 1,
+    };
+    saveProfile(storage, profile);
+    game = createGame({ seed: sessionSeed(), deck: buildStartingDeck(profile) });
     busy = false;
     deckOpen = false;
+    selectedSaveCardIndex = null;
     render("draw");
   }
 
@@ -100,6 +139,22 @@ export function bootstrapApp(): void {
     render("draw");
   }
 
+  function chooseSaveCard(index: number) {
+    if (busy || game.state.phase !== "ended" || game.state.endReason !== "death" || selectedSaveCardIndex !== null) {
+      return;
+    }
+
+    const card = game.state.acquiredCards[index];
+    if (!card) {
+      return;
+    }
+
+    selectedSaveCardIndex = index;
+    profile = appendSavedCard(profile, card);
+    saveProfile(storage, profile);
+    render("refresh");
+  }
+
   function openDeck() {
     if (busy || game.state.phase !== "combat") {
       return;
@@ -118,7 +173,7 @@ export function bootstrapApp(): void {
     render("refresh");
   }
 
-  ui.restartButton.addEventListener("click", resetGame);
+  ui.restartButton.addEventListener("click", startNewRun);
   ui.deckButton.addEventListener("click", openDeck);
   ui.overlayCloseButton.addEventListener("click", closeDeck);
   ui.overlay.addEventListener("click", (event) => {
@@ -195,6 +250,7 @@ function renderGame(
   ui: Ui,
   game: GameEngine,
   busy: boolean,
+  runNumber: number,
   onPlay: (index: number, source: HTMLButtonElement, card: ResolvedCard) => void,
 ): void {
   const state = game.state;
@@ -204,7 +260,7 @@ function renderGame(
     return;
   }
 
-  ui.stageText.textContent = defect.boss ? `БОСС ${state.stage}/${FINAL_STAGE}` : `СПУТНИК ${state.stage}/${FINAL_STAGE}`;
+  ui.stageText.textContent = `ЗАБЕГ ${runNumber} · ${defect.boss ? `БОСС ${state.stage}/${FINAL_STAGE}` : `СПУТНИК ${state.stage}/${FINAL_STAGE}`}`;
   ui.enemyTitle.textContent = defect.title;
   const extra = defect.id === "ice" && state.iceMelted ? "лёд расплавлен" : defect.subtitle;
   ui.enemySubtitle.textContent = `${extra} · цикл: 🔥+${defect.heatPerCycle}${state.modules.includes("badbattery") ? "+1" : ""}`;
@@ -278,7 +334,9 @@ function renderOverlay(
   busy: boolean,
   deckOpen: boolean,
   showDeck: boolean,
+  selectedSaveCardIndex: number | null,
   onChooseReward: (index: number) => void,
+  onChooseSaveCard: (index: number) => void,
   onCloseDeck: () => void,
 ): void {
   const state = game.state;
@@ -304,11 +362,27 @@ function renderOverlay(
   }
 
   ui.overlayTitle.textContent = state.overlayTitle;
-  ui.overlayText.textContent = state.overlayText;
-  ui.restartButton.style.display = state.phase === "ended" ? "block" : "none";
   ui.overlayCloseButton.style.display = "none";
   ui.rewardList.classList.remove("deck-view");
   ui.rewardList.innerHTML = "";
+
+  if (state.phase === "ended" && state.endReason === "death") {
+    ui.overlayText.textContent =
+      state.acquiredCards.length === 0
+        ? "В этом забеге не было карт для сохранения. Начни следующий забег."
+        : selectedSaveCardIndex === null
+          ? "Выбери одну карту из этого забега и сохрани её для следующего."
+          : `Сохранено: ${getCardProps(state.acquiredCards[selectedSaveCardIndex]).name}. Можно начинать следующий забег.`;
+    const canStartNewRun = state.acquiredCards.length === 0 || selectedSaveCardIndex !== null;
+    ui.restartButton.style.display = canStartNewRun ? "block" : "none";
+    if (state.acquiredCards.length > 0) {
+      renderSaveCardList(ui, state.acquiredCards, selectedSaveCardIndex, onChooseSaveCard);
+    }
+    return;
+  }
+
+  ui.overlayText.textContent = state.overlayText;
+  ui.restartButton.style.display = state.phase === "ended" ? "block" : "none";
 
   if (state.phase !== "reward") {
     return;
@@ -346,6 +420,38 @@ function renderDeckList(ui: Ui, deck: readonly { id: string; upgraded?: boolean 
     `;
     ui.rewardList.appendChild(row);
   });
+}
+
+function renderSaveCardList(
+  ui: Ui,
+  cards: readonly DeckCard[],
+  selectedSaveCardIndex: number | null,
+  onChooseSaveCard: (index: number) => void,
+): void {
+  cards.forEach((cardObj, index) => {
+    const card = getCardProps(cardObj);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `reward-button save-button ${cardObj.upgraded ? "upgraded" : ""} ${selectedSaveCardIndex === index ? "selected" : ""}`;
+    button.disabled = selectedSaveCardIndex !== null;
+    button.innerHTML = saveCardMarkup(card);
+    button.addEventListener("click", () => {
+      onChooseSaveCard(index);
+    });
+    ui.rewardList.appendChild(button);
+  });
+}
+
+function saveCardMarkup(card: ResolvedCard): string {
+  return `
+    <div class="reward-icon emoji">${card.icon}</div>
+    <div>
+      <div class="reward-name">${card.name}</div>
+      <div class="reward-desc">${card.effects
+        .map((effect) => `${effect.icon} ${effect.text}`)
+        .join(" · ")}</div>
+    </div>
+  `;
 }
 
 function rewardMarkup(reward: RewardOption): string {

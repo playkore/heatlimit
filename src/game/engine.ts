@@ -65,6 +65,7 @@ export interface GameState {
   phase: GamePhase;
   stage: number;
   deck: DeckCard[];
+  acquiredCards: DeckCard[];
   modules: ModuleId[];
   rewardsSeen: number;
   defect: DefectInstance | null;
@@ -83,6 +84,7 @@ export interface GameState {
   radiatorUsed: boolean;
   repairCardsPlayed: number;
   pendingRewards: RewardOption[];
+  endReason: "death" | "victory" | null;
   messageHtml: string;
   bannerText: string;
   overlayTitle: string;
@@ -126,6 +128,7 @@ export class GameEngine {
     this.state.deck = this.initialDeck.map(cloneCard);
     this.state.modules = [...this.initialModules];
     this.state.rewardsSeen = 0;
+    this.state.acquiredCards = [];
     this.startCombat();
   }
 
@@ -214,6 +217,7 @@ export class GameEngine {
 
     if (this.state.heat >= MAX_HEAT) {
       this.state.phase = "ended";
+      this.state.endReason = "death";
       this.state.overlayTitle = "ПЕРЕГРЕВ";
       this.state.overlayText = "Мультитул сгорел. Миссия сорвана.";
     }
@@ -232,7 +236,9 @@ export class GameEngine {
     }
 
     if (reward.kind === "card") {
-      this.state.deck.push({ id: reward.cardId });
+      const addedCard = { id: reward.cardId };
+      this.state.deck.push(addedCard);
+      this.state.acquiredCards.push(addedCard);
     } else if (reward.kind === "upgrade") {
       const target = this.state.deck[reward.cardIndex];
       if (target) {
@@ -257,6 +263,7 @@ export class GameEngine {
       phase: "combat",
       stage: this.initialStage,
       deck: [],
+      acquiredCards: [],
       modules: [],
       rewardsSeen: 0,
       defect: null,
@@ -275,6 +282,7 @@ export class GameEngine {
       radiatorUsed: false,
       repairCardsPlayed: 0,
       pendingRewards: [],
+      endReason: null,
       messageHtml: "",
       bannerText: "",
       overlayTitle: "",
@@ -297,6 +305,7 @@ export class GameEngine {
     this.state.drawPile = this.rng.shuffle(this.state.deck.map(cloneCard));
     this.state.discard = [];
     this.state.hand = [];
+    this.state.endReason = null;
     this.state.iceMelted = false;
     this.state.bossShieldUsed = false;
     this.state.firstCardHeatReduced = false;
@@ -551,6 +560,7 @@ export class GameEngine {
   private completeVictory(): void {
     if (this.state.stage >= FINAL_STAGE) {
       this.state.phase = "ended";
+      this.state.endReason = "victory";
       this.state.overlayTitle = "СПУТНИК СПАСЁН";
       this.state.overlayText = "Главный контур восстановлен. Миссия завершена.";
       this.state.pendingRewards = [];
@@ -558,6 +568,7 @@ export class GameEngine {
     }
 
     this.state.phase = "reward";
+    this.state.endReason = null;
     this.state.overlayTitle = "ПОЛОМКА УСТРАНЕНА";
     this.state.overlayText = "Выберите одну награду перед следующей аварией.";
     this.state.pendingRewards = this.makeRewards();

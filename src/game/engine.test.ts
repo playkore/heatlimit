@@ -50,6 +50,26 @@ describe("game engine", () => {
     expect(game.state.deck.some((card) => card.id === "clamp" && card.upgraded)).toBe(true);
   });
 
+  it("tracks reward cards so they can be saved after death", () => {
+    const game = createGame({
+      seed: 11,
+      deck: [{ id: "laser" }, { id: "laser" }, { id: "laser" }, { id: "laser" }],
+      modules: [],
+      stage: 1,
+    });
+
+    game.state.phase = "reward";
+    game.state.pendingRewards = [
+      { kind: "card", icon: "🧪", name: "TEST CARD", desc: "test", cardId: "laser" },
+    ];
+
+    game.chooseReward(0);
+
+    expect(game.state.acquiredCards).toHaveLength(1);
+    expect(game.state.acquiredCards[0].id).toBe("laser");
+    expect(game.state.deck.some((card) => card.id === "laser")).toBe(true);
+  });
+
   it("reshuffles the discard pile when the draw pile is empty", () => {
     const game = createGame({
       seed: 12,
@@ -82,5 +102,20 @@ describe("game engine", () => {
 
     expect(game.state.heat).toBeLessThanOrEqual(10);
     expect(game.state.radiatorUsed).toBe(true);
+  });
+
+  it("marks overheating as a death ending", () => {
+    const game = createGame({
+      seed: 19,
+      deck: [{ id: "laser" }, { id: "laser" }, { id: "laser" }],
+      modules: [],
+      stage: 1,
+    });
+
+    game.state.heat = 10;
+    game.resolveEnemyTurn();
+
+    expect(game.state.phase).toBe("ended");
+    expect(game.state.endReason).toBe("death");
   });
 });
