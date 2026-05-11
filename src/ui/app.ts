@@ -1,7 +1,15 @@
-import { MAX_ACTIONS, MAX_HEAT, FINAL_STAGE, getCardProps, modulesDb } from "../game/data";
+import { FINAL_STAGE, HAND_SIZE, MAX_ACTIONS, MAX_HEAT, getCardProps, modulesDb } from "../game/data";
 import { createGame, type GameEngine, type GameEvent, type RewardOption } from "../game/engine";
+import type { GameStateView, ResolvedCard } from "../game/api";
 
 const sessionSeed = () => (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0;
+
+const HAND_CARD_SELECTOR = ".card";
+const CARD_FLY_DURATION = 360;
+const DRAW_FLY_DURATION = 420;
+const SOURCE_CARD_RATIO = 0.42;
+const TARGET_DISCARD_RATIO = 0.36;
+const PILE_MARGIN = 6;
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -13,16 +21,22 @@ export function bootstrapApp(): void {
   const ui = createUi();
   let game = createGame({ seed: sessionSeed() });
   let busy = false;
+  let previousSnapshot: Snapshot | null = null;
 
-  function render() {
+  function render(reason: RenderReason = "refresh") {
+    const currentSnapshot = snapshotState(game.state);
+    const visibleCards = game.state.hand.slice(0, HAND_SIZE).map((cardObj) => getCardProps(cardObj));
+
     renderGame(ui, game, busy, playCard);
     renderOverlay(ui, game, chooseReward);
+    scheduleHandAnimations(ui, previousSnapshot, currentSnapshot, reason, visibleCards);
+    previousSnapshot = currentSnapshot;
   }
 
   function resetGame() {
     game = createGame({ seed: sessionSeed() });
     busy = false;
-    render();
+    render("draw");
   }
 
   function applyEvents(events: GameEvent[]) {
@@ -49,24 +63,24 @@ export function bootstrapApp(): void {
 
     busy = true;
     applyEvents(game.playCard(index));
-    render();
+    render("play");
 
     await wait(500);
 
     if (game.state.phase !== "combat") {
       busy = false;
-      render();
+      render("refresh");
       return;
     }
 
     if (game.state.actions >= MAX_ACTIONS) {
       applyEvents(game.resolveEnemyTurn());
-      render();
+      render("draw");
       await wait(390);
     }
 
     busy = false;
-    render();
+    render("refresh");
   }
 
   function chooseReward(index: number) {
@@ -75,11 +89,11 @@ export function bootstrapApp(): void {
     }
 
     game.chooseReward(index);
-    render();
+    render("draw");
   }
 
   ui.restartButton.addEventListener("click", resetGame);
-  render();
+  render("draw");
 }
 
 function createUi() {
@@ -108,6 +122,12 @@ function createUi() {
     hpFill: get("hpFill"),
     message: get("message"),
     cardArea: get("cardArea"),
+    animationLayer: get("animationLayer"),
+    drawPilePanel: get("drawPilePanel"),
+    drawPileCount: get("drawPileCount"),
+    discardPanel: get("discardPanel"),
+    discardCount: get("discardCount"),
+    deckButton: get("deckButton") as HTMLButtonElement,
     overlay: get("overlay"),
     overlayTitle: get("overlayTitle"),
     overlayText: get("overlayText"),
@@ -117,11 +137,31 @@ function createUi() {
   };
 }
 
+type Ui = ReturnType<typeof createUi>;
+
+type RenderReason = "refresh" | "play" | "draw";
+
+interface Snapshot {
+  phase: GameStateView["phase"];
+  stage: number;
+  actions: number;
+  handLength: number;
+  drawPileCount: number;
+  discardCount: number;
+}
+
+interface RectBox {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
 function renderGame(
-  ui: ReturnType<typeof createUi>,
+  ui: Ui,
   game: GameEngine,
   busy: boolean,
-  onPlay: (index: number) => void,
+  onPlay: (index: number, source: HTMLButtonElement, card: ResolvedCard) => void,
 ): void {
   const state = game.state;
   const defect = state.defect;
@@ -143,13 +183,15 @@ function renderGame(
   ui.hpFill.style.width = `${(100 * state.hp) / state.maxHp}%`;
   ui.heatFill.classList.toggle("danger", state.heat >= MAX_HEAT - 2);
   ui.message.innerHTML = state.messageHtml;
+  ui.drawPileCount.textContent = String(state.drawPile.length);
+  ui.discardCount.textContent = String(state.discard.length);
 
   renderModules(ui, state.modules);
   renderHand(ui, game, busy, onPlay);
 }
 
 function renderModules(
-  ui: ReturnType<typeof createUi>,
+  ui: Ui,
   modules: readonly (keyof typeof modulesDb)[],
 ): void {
   ui.modules.innerHTML = "";
@@ -172,41 +214,30 @@ function renderModules(
 }
 
 function renderHand(
-  ui: ReturnType<typeof createUi>,
+  ui: Ui,
   game: GameEngine,
   busy: boolean,
-  onPlay: (index: number) => void,
+  onPlay: (index: number, source: HTMLButtonElement, card: ResolvedCard) => void,
 ): void {
   ui.cardArea.innerHTML = "";
-  game.state.hand.slice(0, 3).forEach((cardObj, index) => {
+  game.state.hand.slice(0, HAND_SIZE).forEach((cardObj, index) => {
     const card = getCardProps(cardObj);
     const button = document.createElement("button");
     button.type = "button";
     button.className = `card ${cardObj.upgraded ? "upgraded" : ""}`;
     button.disabled = busy || game.state.phase !== "combat" || game.state.actions >= MAX_ACTIONS;
     button.dataset.cardIndex = String(index);
-    button.innerHTML = `
-      <div class="card-name">${card.name}</div>
-      <div class="card-icon emoji">${card.icon}</div>
-      <div class="card-effects">
-        ${card.effects
-          .map(
-            (effect) => `
-              <div class="effect-line"><span class="emoji">${effect.icon}</span><span>${effect.text}</span></div>
-            `,
-          )
-          .join("")}
-      </div>
-    `;
+    button.innerHTML = cardMarkup(card);
     button.addEventListener("click", () => {
-      onPlay(index);
+      playDiscardAnimation(ui, button, card);
+      onPlay(index, button, card);
     });
     ui.cardArea.appendChild(button);
   });
 }
 
 function renderOverlay(
-  ui: ReturnType<typeof createUi>,
+  ui: Ui,
   game: GameEngine,
   onChooseReward: (index: number) => void,
 ): void {
@@ -252,14 +283,14 @@ function rewardMarkup(reward: RewardOption): string {
   `;
 }
 
-function showBanner(ui: ReturnType<typeof createUi>, text: string): void {
+function showBanner(ui: Ui, text: string): void {
   ui.cycleBanner.textContent = text;
   ui.cycleBanner.classList.remove("show");
   void ui.cycleBanner.offsetWidth;
   ui.cycleBanner.classList.add("show");
 }
 
-function floatText(ui: ReturnType<typeof createUi>, text: string, tone: string): void {
+function floatText(ui: Ui, text: string, tone: string): void {
   const node = document.createElement("div");
   node.className = `float-text ${tone}`;
   node.textContent = text;
@@ -267,36 +298,36 @@ function floatText(ui: ReturnType<typeof createUi>, text: string, tone: string):
   window.setTimeout(() => node.remove(), 720);
 }
 
-function enemyHit(ui: ReturnType<typeof createUi>, amount: number): void {
+function enemyHit(ui: Ui, amount: number): void {
   animateEnemyHit(ui);
   floatText(ui, `🔧-${amount}`, "");
   spawnSparks(ui, 12);
 }
 
-function enemyPulse(ui: ReturnType<typeof createUi>): void {
+function enemyPulse(ui: Ui): void {
   animateEnemyPulse(ui);
   spawnSparks(ui, 5);
 }
 
-function animateEnemyHit(ui: ReturnType<typeof createUi>): void {
+function animateEnemyHit(ui: Ui): void {
   ui.enemy.classList.remove("hit");
   void ui.enemy.offsetWidth;
   ui.enemy.classList.add("hit");
 }
 
-function animateEnemyPulse(ui: ReturnType<typeof createUi>): void {
+function animateEnemyPulse(ui: Ui): void {
   ui.enemy.classList.remove("pulse");
   void ui.enemy.offsetWidth;
   ui.enemy.classList.add("pulse");
 }
 
-function shake(ui: ReturnType<typeof createUi>): void {
+function shake(ui: Ui): void {
   ui.phone.classList.remove("shake");
   void ui.phone.offsetWidth;
   ui.phone.classList.add("shake");
 }
 
-function spawnSparks(ui: ReturnType<typeof createUi>, count: number): void {
+function spawnSparks(ui: Ui, count: number): void {
   ui.sparks.innerHTML = "";
   for (let index = 0; index < count; index += 1) {
     const spark = document.createElement("div");
@@ -310,4 +341,201 @@ function spawnSparks(ui: ReturnType<typeof createUi>, count: number): void {
   window.setTimeout(() => {
     ui.sparks.innerHTML = "";
   }, 500);
+}
+
+function snapshotState(state: GameStateView): Snapshot {
+  return {
+    phase: state.phase,
+    stage: state.stage,
+    actions: state.actions,
+    handLength: state.hand.length,
+    drawPileCount: state.drawPileCount,
+    discardCount: state.discardCount,
+  };
+}
+
+function scheduleHandAnimations(
+  ui: Ui,
+  previous: Snapshot | null,
+  current: Snapshot,
+  reason: RenderReason,
+  visibleCards: readonly ResolvedCard[],
+): void {
+  window.requestAnimationFrame(() => {
+    const buttons = Array.from(ui.cardArea.querySelectorAll<HTMLButtonElement>(HAND_CARD_SELECTOR));
+    if (buttons.length === 0) {
+      return;
+    }
+
+    if (reason === "play") {
+      animateDrawAfterPlay(ui, previous, buttons, visibleCards);
+      return;
+    }
+
+    if (reason === "draw") {
+      animateFreshHand(ui, buttons, visibleCards);
+    }
+  });
+}
+
+function animateFreshHand(ui: Ui, buttons: HTMLButtonElement[], visibleCards: readonly ResolvedCard[]): void {
+  const sourceRect = makePileSourceRect(ui.drawPilePanel, buttons[0].getBoundingClientRect(), "left");
+
+  buttons.forEach((button, index) => {
+    const cardRect = button.getBoundingClientRect();
+    animateCardFlight(ui, {
+      card: visibleCards[index],
+      from: sourceRect,
+      to: cardRect,
+      duration: DRAW_FLY_DURATION + index * 40,
+      delay: index * 55,
+      opacity: 0.96,
+      rotate: index === 1 ? -2 : index === 2 ? 2 : 0,
+    });
+  });
+}
+
+function animateDrawAfterPlay(
+  ui: Ui,
+  previous: Snapshot | null,
+  buttons: HTMLButtonElement[],
+  visibleCards: readonly ResolvedCard[],
+): void {
+  if (!previous) {
+    animateFreshHand(ui, buttons, visibleCards);
+    return;
+  }
+
+  const remainingVisibleCards = Math.max(0, Math.min(HAND_SIZE, previous.handLength) - 1);
+  if (buttons.length <= remainingVisibleCards) {
+    return;
+  }
+
+  const drawnButtons = buttons.slice(remainingVisibleCards);
+  const drawnCards = visibleCards.slice(remainingVisibleCards);
+  const sourceRect = makePileSourceRect(ui.drawPilePanel, drawnButtons[0].getBoundingClientRect(), "left");
+
+  drawnButtons.forEach((button, index) => {
+    const cardRect = button.getBoundingClientRect();
+    animateCardFlight(ui, {
+      card: drawnCards[index],
+      from: sourceRect,
+      to: cardRect,
+      duration: DRAW_FLY_DURATION + index * 35,
+      delay: index * 45,
+      opacity: 0.96,
+      rotate: index === 0 ? -2 : 2,
+    });
+  });
+}
+
+function animateCardFlight(
+  ui: Ui,
+  options: {
+    card: ResolvedCard;
+    from: RectBox;
+    to: RectBox;
+    duration: number;
+    delay?: number;
+    opacity?: number;
+    rotate?: number;
+  },
+): void {
+  const clone = document.createElement("button");
+  clone.type = "button";
+  clone.className = `card fly ${options.card.upgraded ? "upgraded" : ""}`;
+  clone.innerHTML = cardMarkup(options.card);
+  clone.setAttribute("aria-hidden", "true");
+  clone.tabIndex = -1;
+  clone.style.left = `${options.from.left}px`;
+  clone.style.top = `${options.from.top}px`;
+  clone.style.width = `${options.from.width}px`;
+  clone.style.height = `${options.from.height}px`;
+  clone.style.opacity = "0.98";
+  clone.style.zIndex = "30";
+  ui.animationLayer.appendChild(clone);
+
+  const animation = clone.animate(
+    [
+      {
+        left: `${options.from.left}px`,
+        top: `${options.from.top}px`,
+        width: `${options.from.width}px`,
+        height: `${options.from.height}px`,
+        opacity: 0.98,
+        transform: "rotate(0deg)",
+      },
+      {
+        left: `${options.to.left}px`,
+        top: `${options.to.top}px`,
+        width: `${options.to.width}px`,
+        height: `${options.to.height}px`,
+        opacity: options.opacity ?? 1,
+        transform: `rotate(${options.rotate ?? 0}deg)`,
+      },
+    ],
+    {
+      duration: options.duration,
+      delay: options.delay ?? 0,
+      easing: "cubic-bezier(.18, .88, .2, 1)",
+      fill: "forwards",
+    },
+  );
+
+  animation.addEventListener(
+    "finish",
+    () => {
+      clone.remove();
+    },
+    { once: true },
+  );
+}
+
+function makePileSourceRect(panel: HTMLElement, cardRect: DOMRect, side: "left" | "right"): RectBox {
+  const dockRect = panel.getBoundingClientRect();
+  const width = Math.min(cardRect.width * SOURCE_CARD_RATIO, dockRect.width - PILE_MARGIN * 2);
+  const height = Math.min(cardRect.height * SOURCE_CARD_RATIO, dockRect.height - PILE_MARGIN * 2);
+  const left = side === "left" ? dockRect.left + PILE_MARGIN : dockRect.right - width - PILE_MARGIN;
+  const top = dockRect.bottom - height - PILE_MARGIN;
+
+  return { left, top, width, height };
+}
+
+function makePileTargetRect(panel: HTMLElement, cardRect: DOMRect): RectBox {
+  const dockRect = panel.getBoundingClientRect();
+  const width = Math.min(cardRect.width * TARGET_DISCARD_RATIO, dockRect.width - PILE_MARGIN * 2);
+  const height = Math.min(cardRect.height * TARGET_DISCARD_RATIO, dockRect.height - PILE_MARGIN * 2);
+  const left = dockRect.right - width - PILE_MARGIN;
+  const top = dockRect.bottom - height - PILE_MARGIN;
+
+  return { left, top, width, height };
+}
+
+function playDiscardAnimation(ui: Ui, source: HTMLButtonElement, card: ResolvedCard): void {
+  const sourceRect = source.getBoundingClientRect();
+  const targetRect = makePileTargetRect(ui.discardPanel, sourceRect);
+  animateCardFlight(ui, {
+    card,
+    from: sourceRect,
+    to: targetRect,
+    duration: CARD_FLY_DURATION,
+    opacity: 0.92,
+    rotate: 11,
+  });
+}
+
+function cardMarkup(card: ResolvedCard): string {
+  return `
+    <div class="card-name">${card.name}</div>
+    <div class="card-icon emoji">${card.icon}</div>
+    <div class="card-effects">
+      ${card.effects
+        .map(
+          (effect) => `
+            <div class="effect-line"><span class="emoji">${effect.icon}</span><span>${effect.text}</span></div>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
 }
