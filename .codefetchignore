@@ -1,3 +1,4 @@
 dist
 codefetch
 node_modules
+.playwright-cli
