@@ -36,9 +36,8 @@ describe("balance scenarios", () => {
   it("wins with a fixed deck, module set, and scripted turns", () => {
     const game = runBalanceScript({
       seed: 17,
-      deck: ["laser", "laser", "laser", "laser"],
-      modules: ["radiator"],
-      turns: ["laser", "laser", "laser"],
+      deck: ["clamp", "clamp", "clamp", "clamp", "clamp", "clamp", "clamp", "clamp"],
+      turns: ["clamp", "clamp", "clamp", "clamp", "clamp", "clamp", "clamp", "clamp"],
     });
 
     expect(game.state.phase).toBe("reward");

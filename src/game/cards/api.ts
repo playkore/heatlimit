@@ -55,6 +55,7 @@ export interface ResolvedCard {
 export interface CardPlayContext {
   readonly card: ResolvedCard;
   readonly state: Readonly<GameStateView>;
+  getState(): Readonly<GameStateView>;
   readonly rng: {
     next(): number;
     int(maxExclusive: number): number;

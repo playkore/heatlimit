@@ -1,14 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { createGame } from "./engine";
 import { playCardById, runScenario } from "./scenario";
+import { HAND_SIZE } from "./data";
+import { cardDb } from "./cards/registry";
 
 describe("game engine", () => {
   it("plays a seeded run and advances to the next stage deterministically", () => {
     const game = runScenario({
       seed: 1,
-      deck: [{ id: "laser" }, { id: "laser" }, { id: "laser" }, { id: "laser" }],
-      modules: ["ceramic", "radiator"],
-      steps: ["laser", "laser", "laser"],
+      deck: [
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+      ],
+      steps: ["clamp", "clamp", "clamp", "clamp", "clamp", "clamp", "clamp", "clamp"],
       rewardIndex: 0,
     });
 
@@ -25,19 +35,19 @@ describe("game engine", () => {
       deck: [
         { id: "clamp" },
         { id: "clamp" },
-        { id: "laser" },
-        { id: "laser" },
-        { id: "laser" },
-        { id: "laser" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
       ],
-      modules: ["radiator"],
       stage: 1,
     });
 
-    playCardById(game, "laser");
-    playCardById(game, "laser");
-    playCardById(game, "laser");
-    playCardById(game, "laser");
+    for (let index = 0; index < 8; index += 1) {
+      playCardById(game, "clamp");
+    }
 
     expect(game.state.phase).toBe("reward");
     const upgradeIndex = game.state.pendingRewards.findIndex((reward) => reward.kind === "upgrade");
@@ -104,7 +114,7 @@ describe("game engine", () => {
     expect(game.state.radiatorUsed).toBe(true);
   });
 
-  it("marks overheating as a death ending", () => {
+  it("ends the run immediately when a card overheats the tool", () => {
     const game = createGame({
       seed: 19,
       deck: [{ id: "laser" }, { id: "laser" }, { id: "laser" }],
@@ -112,10 +122,98 @@ describe("game engine", () => {
       stage: 1,
     });
 
-    game.state.heat = 10;
-    game.resolveEnemyTurn();
+    game.state.hand = [{ id: "laser" }];
+    game.state.drawPile = [];
+    game.state.discard = [];
+    game.state.heat = 5;
+
+    game.playCard(0);
 
     expect(game.state.phase).toBe("ended");
     expect(game.state.endReason).toBe("death");
+    expect(game.state.overlayTitle).toBe("ПЕРЕГРЕВ");
+    expect(game.state.heat).toBe(10);
+  });
+
+  it("applies spark heat to repair cards even when they have no heat effect", () => {
+    const game = createGame({
+      seed: 21,
+      deck: [{ id: "clamp" }],
+      modules: [],
+      stage: 3,
+    });
+
+    game.state.hand = [{ id: "clamp" }];
+    game.state.drawPile = [];
+    game.state.discard = [];
+
+    game.playCard(0);
+
+    expect(game.state.heat).toBe(1);
+  });
+
+  it("does not let draw effects create hidden cards past the hand limit", () => {
+    const game = createGame({
+      seed: 31,
+      deck: [{ id: "diagnose" }, { id: "clamp" }, { id: "clamp" }, { id: "clamp" }],
+      modules: [],
+      stage: 1,
+    });
+
+    game.state.hand = [{ id: "diagnose" }, { id: "clamp" }, { id: "clamp" }];
+    game.state.drawPile = [{ id: "clamp" }, { id: "clamp" }];
+    game.state.discard = [];
+
+    game.playCard(0);
+
+    expect(game.state.hand.length).toBe(HAND_SIZE);
+  });
+
+  it("applies the boss shield only to the first repair hit in the cycle", () => {
+    const game = createGame({
+      seed: 41,
+      deck: [{ id: "clamp" }, { id: "clamp" }],
+      modules: [],
+      stage: 5,
+    });
+
+    game.state.hand = [{ id: "clamp" }, { id: "clamp" }];
+    game.state.drawPile = [];
+    game.state.discard = [];
+
+    game.playCard(0);
+    expect(game.state.hp).toBe(game.state.maxHp - 1);
+    expect(game.state.bossShieldUsed).toBe(true);
+
+    game.playCard(0);
+    expect(game.state.hp).toBe(game.state.maxHp - 4);
+  });
+
+  it("keeps bad battery scoped to repair cards", () => {
+    const original = cardDb.clamp;
+    try {
+      (cardDb as any).clamp = {
+        ...original,
+        tags: ["utility"],
+        logic: original.logic,
+      };
+
+      const game = createGame({
+        seed: 51,
+        deck: [{ id: "clamp" }],
+        modules: ["badbattery"],
+        stage: 1,
+      });
+
+      game.state.hand = [{ id: "clamp" }];
+      game.state.drawPile = [];
+      game.state.discard = [];
+
+      game.playCard(0);
+
+      expect(game.state.hp).toBe(game.state.maxHp - 3);
+    } finally {
+      (cardDb as any).clamp = original;
+    }
   });
 });

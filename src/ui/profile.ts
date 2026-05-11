@@ -15,6 +15,7 @@ export interface StorageLike {
 
 const STORAGE_KEY = "heat-limit.profile.v1";
 const PROFILE_VERSION = 1;
+const MAX_SAVED_CARDS = initialDeck.length;
 
 export function createDefaultProfile(): PersistentProfile {
   return {
@@ -47,9 +48,18 @@ export function clearProfile(storage: StorageLike): void {
 }
 
 export function appendSavedCard(profile: PersistentProfile, card: DeckCard): PersistentProfile {
+  const nextCard = cloneCard(card);
+
+  if (profile.savedCards.length < MAX_SAVED_CARDS) {
+    return {
+      ...profile,
+      savedCards: [...profile.savedCards, nextCard],
+    };
+  }
+
   return {
     ...profile,
-    savedCards: [...profile.savedCards, cloneCard(card)],
+    savedCards: [...profile.savedCards.slice(1), nextCard],
   };
 }
 
@@ -63,7 +73,8 @@ function normalizeProfile(value: unknown): PersistentProfile {
   }
 
   const runNumber = normalizePositiveInteger(value.runNumber, 1);
-  const savedCards = Array.isArray(value.savedCards) ? value.savedCards.map(normalizeDeckCard).filter(isDeckCard) : [];
+  const normalizedSavedCards = Array.isArray(value.savedCards) ? value.savedCards.map(normalizeDeckCard).filter(isDeckCard) : [];
+  const savedCards = normalizedSavedCards.slice(-MAX_SAVED_CARDS);
 
   return {
     version: PROFILE_VERSION,

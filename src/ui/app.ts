@@ -105,12 +105,12 @@ export function bootstrapApp(): void {
   function applyEvents(events: GameEvent[]) {
     for (const event of events) {
       if (event.type === "banner") {
-        showBanner(ui, event.text);
+        showBanner(ui, event.text ?? "");
       } else if (event.type === "float") {
-        floatText(ui, event.text, event.tone ?? "");
+        floatText(ui, event.text ?? "", event.tone ?? "");
       } else if (event.type === "enemy-hit") {
         shake(ui);
-        enemyHit(ui, event.amount);
+        enemyHit(ui, event.amount ?? 0);
       } else if (event.type === "enemy-pulse") {
         enemyPulse(ui);
       } else if (event.type === "shake") {
@@ -244,6 +244,7 @@ function createUi() {
     heatText: get("heatText"),
     heatFill: get("heatFill"),
     modules: get("modules"),
+    moduleList: get("moduleList"),
     enemyTitle: get("enemyTitle"),
     enemySubtitle: get("enemySubtitle"),
     enemyEmoji: get("enemyEmoji"),
@@ -292,6 +293,16 @@ interface RectBox {
   top: number;
   width: number;
   height: number;
+}
+
+function toLayerRect(layer: HTMLElement, rect: Pick<DOMRect, "left" | "top" | "width" | "height">): RectBox {
+  const layerRect = layer.getBoundingClientRect();
+  return {
+    left: rect.left - layerRect.left,
+    top: rect.top - layerRect.top,
+    width: rect.width,
+    height: rect.height,
+  };
 }
 
 function renderGame(
@@ -347,7 +358,7 @@ function renderModules(
     const module = modulesDb[id];
     const chip = document.createElement("div");
     chip.className = "module-chip emoji";
-    chip.title = `${module.name}: ${module.text}`;
+    chip.setAttribute("aria-label", `${module.name}: ${module.text}`);
     chip.textContent = module.icon;
     ui.modules.appendChild(chip);
   }
@@ -393,7 +404,9 @@ function renderOverlay(
   ui.overlay.classList.toggle("deck-mode", showDeck);
 
   if (!visible) {
+    ui.moduleList.innerHTML = "";
     ui.rewardList.innerHTML = "";
+    ui.rewardList.classList.remove("deck-view");
     ui.restartButton.style.display = "none";
     ui.overlayCloseButton.style.display = "none";
     return;
@@ -401,9 +414,10 @@ function renderOverlay(
 
   if (showDeck) {
     ui.overlayTitle.textContent = "МУЛЬТИТУЛ";
-    ui.overlayText.textContent = `${state.deck.length} инструментов.`;
+    ui.overlayText.textContent = `${state.deck.length} инструментов · ${state.modules.length} модулей.`;
     ui.restartButton.style.display = "none";
     ui.overlayCloseButton.style.display = "block";
+    renderModuleSummary(ui, state.modules);
     ui.rewardList.classList.add("deck-view");
     renderDeckList(ui, state.deck);
     return;
@@ -411,6 +425,7 @@ function renderOverlay(
 
   ui.overlayTitle.textContent = state.overlayTitle;
   ui.overlayCloseButton.style.display = "none";
+  ui.moduleList.innerHTML = "";
   ui.rewardList.classList.remove("deck-view");
   ui.rewardList.innerHTML = "";
 
@@ -460,7 +475,7 @@ function renderMenu(ui: Ui, open: boolean, onStartNewRun: () => void, onClose: (
   ui.menuCloseButton.onclick = onClose;
 }
 
-function renderDeckList(ui: Ui, deck: readonly { id: string; upgraded?: boolean }[]): void {
+function renderDeckList(ui: Ui, deck: readonly DeckCard[]): void {
   ui.rewardList.innerHTML = "";
 
   deck.forEach((cardObj, index) => {
@@ -479,6 +494,37 @@ function renderDeckList(ui: Ui, deck: readonly { id: string; upgraded?: boolean 
     `;
     ui.rewardList.appendChild(row);
   });
+}
+
+function renderModuleSummary(ui: Ui, modules: readonly (keyof typeof modulesDb)[]): void {
+  ui.moduleList.innerHTML = "";
+
+  const heading = document.createElement("div");
+  heading.className = "module-summary-heading";
+  heading.textContent = "АКТИВНЫЕ МОДУЛИ";
+  ui.moduleList.appendChild(heading);
+
+  if (modules.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "module-summary-empty";
+    empty.textContent = "МОДУЛЕЙ НЕТ";
+    ui.moduleList.appendChild(empty);
+    return;
+  }
+
+  for (const id of modules) {
+    const module = modulesDb[id];
+    const row = document.createElement("div");
+    row.className = "module-entry";
+    row.innerHTML = `
+      <div class="module-entry-icon emoji">${module.icon}</div>
+      <div>
+        <div class="module-entry-name">${module.name}</div>
+        <div class="module-entry-desc">${module.text}</div>
+      </div>
+    `;
+    ui.moduleList.appendChild(row);
+  }
 }
 
 function renderSaveCardList(
@@ -583,14 +629,21 @@ function spawnSparks(ui: Ui, count: number): void {
   }, 500);
 }
 
-function snapshotState(state: GameStateView): Snapshot {
+function snapshotState(state: {
+  phase: GameStateView["phase"];
+  stage: number;
+  actions: number;
+  hand: readonly unknown[];
+  drawPile: readonly unknown[];
+  discard: readonly unknown[];
+}): Snapshot {
   return {
     phase: state.phase,
     stage: state.stage,
     actions: state.actions,
     handLength: state.hand.length,
-    drawPileCount: state.drawPileCount,
-    discardCount: state.discardCount,
+    drawPileCount: state.drawPile.length,
+    discardCount: state.discard.length,
   };
 }
 
@@ -619,10 +672,10 @@ function scheduleHandAnimations(
 }
 
 function animateFreshHand(ui: Ui, buttons: HTMLButtonElement[], visibleCards: readonly ResolvedCard[]): void {
-  const sourceRect = makePileSourceRect(ui.drawPilePanel, buttons[0].getBoundingClientRect(), "left");
+  const sourceRect = toLayerRect(ui.animationLayer, makePileSourceRect(ui.drawPilePanel, buttons[0].getBoundingClientRect(), "left"));
 
   buttons.forEach((button, index) => {
-    const cardRect = button.getBoundingClientRect();
+    const cardRect = toLayerRect(ui.animationLayer, button.getBoundingClientRect());
     animateCardFlight(ui, {
       card: visibleCards[index],
       from: sourceRect,
@@ -653,10 +706,10 @@ function animateDrawAfterPlay(
 
   const drawnButtons = buttons.slice(remainingVisibleCards);
   const drawnCards = visibleCards.slice(remainingVisibleCards);
-  const sourceRect = makePileSourceRect(ui.drawPilePanel, drawnButtons[0].getBoundingClientRect(), "left");
+  const sourceRect = toLayerRect(ui.animationLayer, makePileSourceRect(ui.drawPilePanel, drawnButtons[0].getBoundingClientRect(), "left"));
 
   drawnButtons.forEach((button, index) => {
-    const cardRect = button.getBoundingClientRect();
+    const cardRect = toLayerRect(ui.animationLayer, button.getBoundingClientRect());
     animateCardFlight(ui, {
       card: drawnCards[index],
       from: sourceRect,
@@ -752,8 +805,8 @@ function makePileTargetRect(panel: HTMLElement, cardRect: DOMRect): RectBox {
 }
 
 function playDiscardAnimation(ui: Ui, source: HTMLButtonElement, card: ResolvedCard): void {
-  const sourceRect = source.getBoundingClientRect();
-  const targetRect = makePileTargetRect(ui.discardPanel, sourceRect);
+  const sourceRect = toLayerRect(ui.animationLayer, source.getBoundingClientRect());
+  const targetRect = toLayerRect(ui.animationLayer, makePileTargetRect(ui.discardPanel, source.getBoundingClientRect()));
   animateCardFlight(ui, {
     card,
     from: sourceRect,
