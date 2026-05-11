@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <link rel="icon" href="data:," />
+    <title>Space Repair Card Battle Prototype</title>
+  <style>
+    :root {
+      --bg: #06110f;
+      --panel: #f6f3df;
+      --ink: #0b0b0b;
+      --muted: #4b4b4b;
+      --card: #fffdf1;
+      --line: 2px solid var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #010403;
+      color: var(--ink);
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+    }
+
+    button {
+      font: inherit;
+      color: inherit;
+    }
+
+    .phone {
+      width: min(100vw, 430px);
+      height: min(100dvh, 780px);
+      min-height: 640px;
+      background:
+        radial-gradient(circle at 50% 38%, rgba(255,255,255,0.06), transparent 34%),
+        linear-gradient(#06110f, #020605);
+      border: 3px solid #d8d2b8;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 0 5px #101010;
+    }
+
+    .phone.shake {
+      animation: shake 210ms steps(4, end);
+    }
+
+    @keyframes shake {
+      0% { transform: translate(0, 0); }
+      20% { transform: translate(-5px, 3px); }
+      40% { transform: translate(5px, -3px); }
+      60% { transform: translate(-3px, -2px); }
+      80% { transform: translate(3px, 2px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    .screen {
+      position: absolute;
+      inset: 10px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 9px;
+    }
+
+    .top-panel,
+    .arena,
+    .card-area,
+    .overlay-card {
+      background: var(--panel);
+      border: var(--line);
+    }
+
+    .top-panel {
+      padding: 9px;
+      display: grid;
+      gap: 7px;
+    }
+
+    .top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 15px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .modules {
+      display: flex;
+      gap: 4px;
+      min-height: 24px;
+      overflow: hidden;
+      align-items: center;
+    }
+
+    .module-chip {
+      border: 2px solid var(--ink);
+      background: #fff;
+      min-width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      line-height: 1;
+      filter: grayscale(1) contrast(1.6);
+    }
+
+    .empty-modules {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1;
+    }
+
+    .bar-wrap {
+      display: grid;
+      gap: 4px;
+    }
+
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      line-height: 1;
+      gap: 8px;
+    }
+
+    .bar {
+      height: 14px;
+      border: var(--line);
+      background: white;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--ink);
+      transition: width 420ms cubic-bezier(.2, .9, .2, 1);
+    }
+
+    .heat-fill.danger {
+      animation: heatPulse 340ms steps(2, end) infinite;
+    }
+
+    @keyframes heatPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .35; }
+    }
+
+    .arena {
+      position: relative;
+      padding: 10px;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 7px;
+    }
+
+    .enemy-title {
+      text-align: center;
+      font-size: 20px;
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+    }
+
+    .enemy-subtitle {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.1;
+      margin-top: 3px;
+    }
+
+    .enemy-zone {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 212px;
+    }
+
+    .enemy {
+      width: 164px;
+      height: 164px;
+      border: 3px solid var(--ink);
+      background: #fff;
+      display: grid;
+      place-items: center;
+      position: relative;
+      transform-origin: center;
+      box-shadow: 8px 8px 0 #111;
+    }
+
+    .enemy.boss {
+      width: 184px;
+      height: 184px;
+      border-width: 4px;
+      box-shadow: 10px 10px 0 #111;
+    }
+
+    .enemy.hit {
+      animation: enemyHit 260ms cubic-bezier(.2, .9, .2, 1);
+    }
+
+    .enemy.pulse {
+      animation: enemyPulse 300ms cubic-bezier(.2, .9, .2, 1);
+    }
+
+    @keyframes enemyHit {
+      0% { transform: scale(1) rotate(0deg); filter: invert(0); }
+      25% { transform: scale(1.08) rotate(-3deg); filter: invert(1); }
+      55% { transform: scale(.96) rotate(3deg); filter: invert(0); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+
+    @keyframes enemyPulse {
+      0% { transform: scale(1); }
+      35% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    .enemy-emoji {
+      font-size: 76px;
+      line-height: 1;
+      filter: grayscale(1) contrast(2);
+    }
+
+    .enemy::before,
+    .enemy::after {
+      content: "";
+      position: absolute;
+      background: var(--ink);
+    }
+
+    .enemy::before {
+      width: 72px;
+      height: 3px;
+      transform: rotate(-28deg);
+      left: 22px;
+      top: 44px;
+    }
+
+    .enemy::after {
+      width: 92px;
+      height: 3px;
+      transform: rotate(23deg);
+      right: 16px;
+      bottom: 45px;
+    }
+
+    .sparks {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .spark {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 8px;
+      height: 8px;
+      background: var(--ink);
+      animation: spark 420ms ease-out forwards;
+    }
+
+    @keyframes spark {
+      0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+      100% { transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(0); opacity: 0; }
+    }
+
+    .float-text {
+      position: absolute;
+      left: 50%;
+      top: 42%;
+      transform: translate(-50%, -50%);
+      background: var(--ink);
+      color: #fff;
+      border: 2px solid #fff;
+      padding: 5px 8px;
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+      pointer-events: none;
+      animation: floatUp 650ms cubic-bezier(.2, .9, .2, 1) forwards;
+      z-index: 10;
+    }
+
+    .float-text.heat {
+      top: 9%;
+      font-size: 20px;
+    }
+
+    @keyframes floatUp {
+      0% { transform: translate(-50%, 12px) scale(.8); opacity: 0; }
+      20% { opacity: 1; }
+      100% { transform: translate(-50%, -58px) scale(1.1); opacity: 0; }
+    }
+
+    .enemy-hp {
+      display: grid;
+      gap: 5px;
+    }
+
+    .message {
+      min-height: 44px;
+      border: var(--line);
+      background: white;
+      padding: 7px;
+      font-size: 14px;
+      line-height: 1.14;
+      display: grid;
+      align-content: center;
+    }
+
+    .message b {
+      font-weight: 900;
+    }
+
+    .card-area {
+      padding: 9px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      min-height: 150px;
+    }
+
+    .card {
+      min-width: 0;
+      min-height: 132px;
+      background: var(--card);
+      border: var(--line);
+      box-shadow: 4px 4px 0 #111;
+      padding: 7px 5px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 4px;
+      text-align: center;
+      position: relative;
+      transition: transform 80ms linear, box-shadow 80ms linear;
+    }
+
+    .card.upgraded::after {
+      content: "+";
+      position: absolute;
+      top: -2px;
+      right: 4px;
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .card:active:not(:disabled) {
+      transform: translate(4px, 4px);
+      box-shadow: 0 0 0 #111;
+      background: var(--ink);
+      color: white;
+    }
+
+    .card:disabled {
+      opacity: .45;
+      box-shadow: none;
+    }
+
+    .card-name {
+      font-size: 14px;
+      line-height: 1;
+      font-weight: 900;
+      min-height: 30px;
+      display: grid;
+      place-items: center;
+    }
+
+    .card-icon {
+      font-size: 36px;
+      line-height: 1;
+      filter: grayscale(1) contrast(1.8);
+      display: grid;
+      place-items: center;
+    }
+
+    .card-effects {
+      display: grid;
+      gap: 2px;
+      justify-content: center;
+      font-size: 15px;
+      line-height: 1;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .effect-line {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+    }
+
+    .emoji {
+      font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+      font-weight: 400;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,.76);
+      display: none;
+      place-items: center;
+      z-index: 20;
+      padding: 18px;
+    }
+
+    .overlay.show {
+      display: grid;
+    }
+
+    .overlay-card {
+      width: min(370px, 100%);
+      max-height: calc(100dvh - 36px);
+      overflow: hidden;
+      padding: 16px;
+      text-align: center;
+      display: grid;
+      gap: 12px;
+    }
+
+    .overlay-title {
+      font-size: 26px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .overlay-text {
+      font-size: 15px;
+      line-height: 1.22;
+      color: var(--muted);
+    }
+
+    .reward-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .reward-button {
+      border: var(--line);
+      background: white;
+      min-height: 72px;
+      padding: 8px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 9px;
+      align-items: center;
+      text-align: left;
+    }
+
+    .reward-button:active {
+      background: var(--ink);
+      color: white;
+    }
+
+    .reward-icon {
+      width: 44px;
+      height: 44px;
+      border: 2px solid currentColor;
+      display: grid;
+      place-items: center;
+      font-size: 26px;
+      filter: grayscale(1) contrast(1.8);
+    }
+
+    .reward-name {
+      font-size: 17px;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 5px;
+    }
+
+    .reward-desc {
+      font-size: 13px;
+      line-height: 1.15;
+    }
+
+    .big-button {
+      min-height: 48px;
+      border: var(--line);
+      background: var(--ink);
+      color: white;
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .cycle-banner {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--ink);
+      color: #fff;
+      border: 3px solid #fff;
+      padding: 12px 16px;
+      font-size: 20px;
+      font-weight: 900;
+      display: none;
+      z-index: 12;
+      white-space: nowrap;
+    }
+
+    .cycle-banner.show {
+      display: block;
+      animation: banner 760ms cubic-bezier(.2, .9, .2, 1) forwards;
+    }
+
+    @keyframes banner {
+      0% { transform: translate(-50%, -50%) scale(.7); opacity: 0; }
+      20% { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
+      75% { opacity: 1; }
+      100% { transform: translate(-50%, -70%) scale(1); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="phone" id="phone">
+    <section class="screen">
+      <header class="top-panel">
+        <div class="top-row">
+          <span id="stageText">СПУТНИК 1/5</span>
+          <span>ХОД <b id="actionsText">0/2</b></span>
+        </div>
+        <div class="modules" id="modules"></div>
+        <div class="bar-wrap">
+          <div class="bar-label">
+            <span>🔥 ПЕРЕГРЕВ</span>
+            <b id="heatText">0/10</b>
+          </div>
+          <div class="bar"><div class="bar-fill heat-fill" id="heatFill"></div></div>
+        </div>
+      </header>
+
+      <section class="arena">
+        <div>
+          <div class="enemy-title" id="enemyTitle">ПРОБОЙ ТРУБЫ</div>
+          <div class="enemy-subtitle" id="enemySubtitle">в конце цикла: 🔥+2</div>
+        </div>
+
+        <div class="enemy-zone" id="enemyZone">
+          <div class="enemy" id="enemy">
+            <div class="enemy-emoji" id="enemyEmoji">🧊</div>
+            <div class="sparks" id="sparks"></div>
+          </div>
+        </div>
+
+        <div class="enemy-hp">
+          <div class="bar-label">
+            <span>СТОЙКОСТЬ АВАРИИ</span>
+            <b id="hpText">24/24</b>
+          </div>
+          <div class="bar"><div class="bar-fill" id="hpFill"></div></div>
+          <div class="message" id="message">Выбери карту. Тап сразу применяет действие.</div>
+        </div>
+      </section>
+
+      <section class="card-area" id="cardArea"></section>
+    </section>
+
+    <div class="cycle-banner" id="cycleBanner">АВАРИЯ ОТВЕЧАЕТ</div>
+
+    <div class="overlay" id="overlay">
+      <div class="overlay-card">
+        <div class="overlay-title" id="overlayTitle">ГОТОВО</div>
+        <div class="overlay-text" id="overlayText">Поломка устранена.</div>
+        <div class="reward-list" id="rewardList"></div>
+        <button class="big-button" id="restartButton" type="button">НОВЫЙ ЗАПУСК</button>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
