@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildStartingDeck, createDefaultProfile, loadProfile, saveProfile } from "./profile";
+import { buildStartingDeck, clearProfile, createDefaultProfile, loadProfile, saveProfile } from "./profile";
 
 function createStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -56,5 +56,13 @@ describe("profile storage", () => {
       "laser",
       "clamp+",
     ]);
+  });
+
+  it("clears stored progress", () => {
+    const storage = createStorage({ "heat-limit.profile.v1": JSON.stringify(createDefaultProfile()) });
+
+    clearProfile(storage);
+
+    expect(storage.getItem("heat-limit.profile.v1")).toBeNull();
   });
 });

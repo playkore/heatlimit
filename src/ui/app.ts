@@ -1,7 +1,7 @@
 import { FINAL_STAGE, HAND_SIZE, MAX_ACTIONS, MAX_HEAT, getCardProps, modulesDb } from "../game/data";
 import { createGame, type GameEngine, type GameEvent, type RewardOption } from "../game/engine";
 import type { GameStateView, ResolvedCard } from "../game/api";
-import { appendSavedCard, buildStartingDeck, loadProfile, saveProfile, type StorageLike } from "./profile";
+import { appendSavedCard, buildStartingDeck, clearProfile, createDefaultProfile, loadProfile, saveProfile, type StorageLike } from "./profile";
 import type { DeckCard } from "../game/cards/helpers";
 
 const sessionSeed = () => (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0;
@@ -51,6 +51,7 @@ export function bootstrapApp(): void {
   let busy = false;
   let previousSnapshot: Snapshot | null = null;
   let deckOpen = false;
+  let menuOpen = false;
   let selectedSaveCardIndex: number | null = null;
 
   function render(reason: RenderReason = "refresh") {
@@ -64,12 +65,17 @@ export function bootstrapApp(): void {
 
     renderGame(ui, game, busy, profile.runNumber, playCard);
     renderOverlay(ui, game, busy, deckOpen, showDeck, selectedSaveCardIndex, chooseReward, chooseSaveCard, closeDeck);
+    renderMenu(ui, menuOpen, startNewGame, closeMenu);
     scheduleHandAnimations(ui, previousSnapshot, currentSnapshot, reason, visibleCards);
     previousSnapshot = currentSnapshot;
   }
 
+  function canStartNewRun(): boolean {
+    return !(game.state.phase === "ended" && game.state.endReason === "death" && game.state.acquiredCards.length > 0 && selectedSaveCardIndex === null);
+  }
+
   function startNewRun() {
-    if (game.state.phase === "ended" && game.state.endReason === "death" && game.state.acquiredCards.length > 0 && selectedSaveCardIndex === null) {
+    if (!canStartNewRun()) {
       return;
     }
 
@@ -81,6 +87,17 @@ export function bootstrapApp(): void {
     game = createGame({ seed: sessionSeed(), deck: buildStartingDeck(profile) });
     busy = false;
     deckOpen = false;
+    selectedSaveCardIndex = null;
+    render("draw");
+  }
+
+  function startNewGame() {
+    clearProfile(storage);
+    profile = createDefaultProfile();
+    game = createGame({ seed: sessionSeed(), deck: buildStartingDeck(profile) });
+    busy = false;
+    deckOpen = false;
+    menuOpen = false;
     selectedSaveCardIndex = null;
     render("draw");
   }
@@ -173,9 +190,36 @@ export function bootstrapApp(): void {
     render("refresh");
   }
 
+  function openMenu() {
+    if (busy) {
+      return;
+    }
+
+    menuOpen = true;
+    deckOpen = false;
+    render("refresh");
+  }
+
+  function closeMenu() {
+    if (!menuOpen) {
+      return;
+    }
+
+    menuOpen = false;
+    render("refresh");
+  }
+
+  ui.menuButton.addEventListener("click", openMenu);
   ui.restartButton.addEventListener("click", startNewRun);
+  ui.menuRestartButton.addEventListener("click", startNewGame);
+  ui.menuCloseButton.addEventListener("click", closeMenu);
   ui.deckButton.addEventListener("click", openDeck);
   ui.overlayCloseButton.addEventListener("click", closeDeck);
+  ui.menuOverlay.addEventListener("click", (event) => {
+    if (event.target === ui.menuOverlay) {
+      closeMenu();
+    }
+  });
   ui.overlay.addEventListener("click", (event) => {
     if (event.target === ui.overlay && deckOpen && game.state.phase === "combat") {
       closeDeck();
@@ -222,6 +266,10 @@ function createUi() {
     overlayText: get("overlayText"),
     rewardList: get("rewardList"),
     restartButton: get("restartButton") as HTMLButtonElement,
+    menuButton: get("menuButton") as HTMLButtonElement,
+    menuOverlay: get("menuOverlay"),
+    menuRestartButton: get("menuRestartButton") as HTMLButtonElement,
+    menuCloseButton: get("menuCloseButton") as HTMLButtonElement,
     cycleBanner: get("cycleBanner"),
   };
 }
@@ -399,6 +447,17 @@ function renderOverlay(
     });
     ui.rewardList.appendChild(button);
   });
+}
+
+function renderMenu(ui: Ui, open: boolean, onStartNewRun: () => void, onClose: () => void): void {
+  ui.menuOverlay.classList.toggle("show", open);
+  ui.menuRestartButton.disabled = false;
+  ui.menuRestartButton.textContent = "НОВАЯ ИГРА";
+  ui.menuRestartButton.onclick = () => {
+    onStartNewRun();
+    onClose();
+  };
+  ui.menuCloseButton.onclick = onClose;
 }
 
 function renderDeckList(ui: Ui, deck: readonly { id: string; upgraded?: boolean }[]): void {

@@ -100,6 +100,19 @@
       font-weight: 900;
     }
 
+    .menu-button {
+      border: var(--line);
+      background: var(--ink);
+      color: white;
+      box-shadow: 3px 3px 0 #111;
+      min-height: 30px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
     .modules {
       display: flex;
       gap: 4px;
@@ -426,6 +439,56 @@
       padding: 18px;
     }
 
+    .menu-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, .58);
+      display: none;
+      place-items: start end;
+      z-index: 25;
+      padding: 18px;
+    }
+
+    .menu-overlay.show {
+      display: grid;
+    }
+
+    .menu-card {
+      width: min(250px, 100%);
+      border: var(--line);
+      background: var(--panel);
+      box-shadow: 8px 8px 0 #111;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .menu-title {
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .menu-actions {
+      display: grid;
+      gap: 8px;
+    }
+
+    .menu-item {
+      min-height: 44px;
+      border: var(--line);
+      background: white;
+      font-size: 15px;
+      font-weight: 900;
+      text-align: left;
+      padding: 8px 10px;
+    }
+
+    .menu-item:active {
+      background: var(--ink);
+      color: white;
+    }
+
     .hand-panel {
       display: grid;
       gap: 7px;
@@ -516,6 +579,7 @@
 
     .overlay-card {
       width: min(370px, 100%);
+      height: min(calc(100dvh - 36px), 100%);
       max-height: calc(100dvh - 36px);
       overflow: hidden;
       padding: 16px;
@@ -523,6 +587,7 @@
       display: grid;
       gap: 12px;
       grid-template-rows: auto auto minmax(0, 1fr) auto;
+      min-height: 0;
     }
 
     .overlay-title {
@@ -542,7 +607,9 @@
       max-height: 100%;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
       display: grid;
+      align-content: start;
       gap: 8px;
     }
 
@@ -608,6 +675,7 @@
       gap: 9px;
       align-items: center;
       text-align: left;
+      align-self: start;
     }
 
     .reward-button:active {
@@ -696,6 +764,7 @@
       <header class="top-panel">
         <div class="top-row">
           <span id="stageText">СПУТНИК 1/5</span>
+          <button class="menu-button" id="menuButton" type="button">МЕНЮ</button>
           <span>ХОД <b id="actionsText">0/2</b></span>
         </div>
         <div class="modules" id="modules"></div>
@@ -759,6 +828,16 @@
         <div class="overlay-actions">
           <button class="big-button" id="overlayCloseButton" type="button" style="display:none">ЗАКРЫТЬ</button>
           <button class="big-button" id="restartButton" type="button" style="display:none">НОВЫЙ ЗАПУСК</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-overlay" id="menuOverlay">
+      <div class="menu-card">
+        <div class="menu-title">МЕНЮ</div>
+        <div class="menu-actions">
+          <button class="menu-item" id="menuRestartButton" type="button">НОВЫЙ ЗАПУСК</button>
+          <button class="menu-item" id="menuCloseButton" type="button">ЗАКРЫТЬ</button>
         </div>
       </div>
     </div>

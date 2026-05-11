@@ -42,6 +42,10 @@ export function saveProfile(storage: StorageLike, profile: PersistentProfile): v
   storage.setItem(STORAGE_KEY, JSON.stringify(normalizeProfile(profile)));
 }
 
+export function clearProfile(storage: StorageLike): void {
+  storage.removeItem(STORAGE_KEY);
+}
+
 export function appendSavedCard(profile: PersistentProfile, card: DeckCard): PersistentProfile {
   return {
     ...profile,
@@ -95,4 +99,3 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isDeckCard(value: DeckCard | null): value is DeckCard {
   return value !== null;
 }
-
