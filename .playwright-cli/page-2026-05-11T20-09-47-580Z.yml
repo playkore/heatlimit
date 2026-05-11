@@ -1,0 +1,84 @@
+- main [ref=e2]:
+  - generic:
+    - button:
+      - generic: СКАН
+      - generic: 📡
+      - generic:
+        - generic:
+          - generic: 🔧
+          - generic: "+1"
+        - generic:
+          - generic: ⬆️
+          - generic: "+2"
+    - button:
+      - generic: ЗАПЛАТКА
+      - generic: 🩹
+      - generic:
+        - generic:
+          - generic: 🔧
+          - generic: "+4"
+    - button:
+      - generic: СКАН
+      - generic: 📡
+      - generic:
+        - generic:
+          - generic: 🔧
+          - generic: "+1"
+        - generic:
+          - generic: ⬆️
+          - generic: "+2"
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: СПУТНИК 1/5
+        - generic [ref=e7]: ХОД 0/2
+      - generic [ref=e9]: МОДУЛЕЙ НЕТ · НАГРАДЫ ПОСЛЕ РЕМОНТА
+      - generic [ref=e11]:
+        - generic [ref=e12]: 🔥 ПЕРЕГРЕВ
+        - generic [ref=e13]: 0/10
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - generic [ref=e17]: ПРОБОЙ ТРУБЫ
+        - generic [ref=e18]: "обычная авария · цикл: 🔥+2"
+      - generic [ref=e21]: 🧊
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - generic [ref=e24]: ПРОГРЕСС РЕМОНТА
+          - generic [ref=e25]: 0/22
+        - generic [ref=e27]: Лёд держит трещину, но труба разваливается.
+    - generic [ref=e28]:
+      - generic [ref=e29]:
+        - button "СКАН 📡 🔧 +1 ⬆️ +2" [ref=e30]:
+          - generic [ref=e31]: СКАН
+          - generic [ref=e32]: 📡
+          - generic [ref=e33]:
+            - generic [ref=e34]:
+              - generic [ref=e35]: 🔧
+              - generic [ref=e36]: "+1"
+            - generic [ref=e37]:
+              - generic [ref=e38]: ⬆️
+              - generic [ref=e39]: "+2"
+        - button "ЗАПЛАТКА 🩹 🔧 +4" [ref=e40]:
+          - generic [ref=e41]: ЗАПЛАТКА
+          - generic [ref=e42]: 🩹
+          - generic [ref=e44]:
+            - generic [ref=e45]: 🔧
+            - generic [ref=e46]: "+4"
+        - button "СКАН 📡 🔧 +1 ⬆️ +2" [ref=e47]:
+          - generic [ref=e48]: СКАН
+          - generic [ref=e49]: 📡
+          - generic [ref=e50]:
+            - generic [ref=e51]:
+              - generic [ref=e52]: 🔧
+              - generic [ref=e53]: "+1"
+            - generic [ref=e54]:
+              - generic [ref=e55]: ⬆️
+              - generic [ref=e56]: "+2"
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - generic [ref=e59]: Доступно
+          - generic [ref=e60]: "6"
+        - button "МУЛЬТИТУЛ" [ref=e61]
+        - generic [ref=e62]:
+          - generic [ref=e63]: Использовано
+          - generic [ref=e64]: "0"

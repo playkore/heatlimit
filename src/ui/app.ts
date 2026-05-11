@@ -213,9 +213,10 @@ function renderGame(
   ui.actionsText.textContent = `${state.actions}/${MAX_ACTIONS}`;
   ui.deckButton.disabled = busy || state.phase !== "combat";
   ui.heatText.textContent = `${state.heat}/${MAX_HEAT}`;
-  ui.hpText.textContent = `${state.hp}/${state.maxHp}`;
+  const repairProgress = Math.max(0, Math.min(state.maxHp, state.maxHp - state.hp));
+  ui.hpText.textContent = `${repairProgress}/${state.maxHp}`;
   ui.heatFill.style.width = `${(100 * state.heat) / MAX_HEAT}%`;
-  ui.hpFill.style.width = `${(100 * state.hp) / state.maxHp}%`;
+  ui.hpFill.style.width = `${(100 * repairProgress) / state.maxHp}%`;
   ui.heatFill.classList.toggle("danger", state.heat >= MAX_HEAT - 2);
   ui.message.innerHTML = state.messageHtml;
   ui.drawPileCount.textContent = String(state.drawPile.length);
