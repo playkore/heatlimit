@@ -21,7 +21,26 @@ import {
   type ResolvedCard,
 } from "./api";
 import { BonusEffect } from "./effects/bonus";
-import type { ActiveEffect } from "./effects/api";
+import {
+  BypassEffect,
+  CondenserEffect,
+  DroneEffect,
+  HeatReductionEffect,
+  RelayEffect,
+  RedZoneEffect,
+  SparkEffect,
+  BrittleEffect,
+  VulnerabilityEffect,
+} from "./effects/standard";
+import type {
+  ActiveEffect,
+  EffectBattleState,
+  EffectCardContext,
+  EffectHeatContext,
+  EffectHost,
+  EffectPlayContext,
+  EffectPlayModifiers,
+} from "./effects/api";
 import { createSeededRng, type Rng } from "./rng";
 
 export type GamePhase = "combat" | "reward" | "ended";
@@ -75,11 +94,30 @@ interface CurrentPlay {
   dealtDamage: number;
   exhausted: boolean;
   messageSet: boolean;
+  modifiers: EffectPlayModifiers;
 }
 
 function clamp(min: number, value: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
+
+function toEffectCard(card: ResolvedCard): EffectCardContext {
+  return {
+    id: card.id,
+    name: card.name,
+    tags: card.tags,
+  };
+}
+
+const REPAIR_EFFECT_CARD: ResolvedCard = {
+  id: "effect-repair",
+  name: "ЭФФЕКТ РЕМОНТА",
+  description: "Служебный ремонт",
+  tags: ["repair"],
+  effects: [],
+  text: "",
+  logic: { play() {} },
+};
 
 export class GameEngine {
   readonly state: GameState;
@@ -131,12 +169,21 @@ export class GameEngine {
       dealtDamage: 0,
       exhausted: false,
       messageSet: false,
+      modifiers: {
+        repeatCard: 0,
+        ignoreArmor: false,
+        ignoreIce: false,
+      },
     };
 
+    this.applyCardStartEffects(card);
     card.logic.play(this.createCardPlayContext(card, events));
+    this.runAfterCardEffects(card, events);
 
-    if (this.state.phase === "combat" && this.state.defect?.id === "spark" && card.tags.includes("repair")) {
-      this.addHeat(1, card, events, "card");
+    while (this.currentPlay.modifiers.repeatCard > 0 && this.state.phase === "combat") {
+      this.currentPlay.modifiers.repeatCard -= 1;
+      card.logic.play(this.createCardPlayContext(card, events));
+      this.runAfterCardEffects(card, events);
     }
 
     if (!this.currentPlay.messageSet) {
@@ -187,7 +234,13 @@ export class GameEngine {
     this.discardHand();
     this.state.actions = 0;
     this.state.bossShieldUsed = false;
-    this.endTurnEffects();
+    this.endTurnEffects(events);
+    if (this.state.phase === "combat" && this.state.hp <= 0) {
+      this.completeVictory();
+    }
+    if (this.state.phase !== "combat") {
+      return events;
+    }
     this.drawHand();
 
     return events;
@@ -303,7 +356,10 @@ export class GameEngine {
     this.state.overlayText = "";
     this.state.bannerText = "";
     this.state.messageHtml = defect.text;
-    this.state.effects = [];
+
+    if (defect.id === "spark") {
+      this.state.effects.push(new SparkEffect());
+    }
 
     this.drawHand();
   }
@@ -419,6 +475,9 @@ export class GameEngine {
       addEffect(effect: ActiveEffect) {
         engine.addEffect(effect, events);
       },
+      removeEffects(kind: string) {
+        engine.removeEffects(kind);
+      },
       addCycleShield(amount: number) {
         engine.addCycleShield(amount, events);
       },
@@ -444,18 +503,17 @@ export class GameEngine {
 
     let damage = amount;
 
-    if (this.state.effects.length > 0) {
-      for (const effect of this.state.effects) {
-        damage = effect.applyDamage(damage);
-      }
-      this.pruneEffects();
+    const playContext = this.createEffectPlayContext(card);
+    for (const effect of [...this.state.effects]) {
+      damage = effect.modifyDamage(damage, playContext);
     }
+    this.pruneEffects();
 
-    if (this.state.defect?.id === "ice" && !this.state.iceMelted) {
+    if (!this.currentPlay?.modifiers.ignoreIce && this.state.defect?.id === "ice" && !this.state.iceMelted) {
       damage = Math.max(1, damage - 1);
     }
 
-    if (this.state.defect?.id === "boss" && !this.state.bossShieldUsed && card.tags.includes("repair")) {
+    if (!this.currentPlay?.modifiers.ignoreArmor && this.state.defect?.id === "boss" && !this.state.bossShieldUsed && card.tags.includes("repair")) {
       damage = Math.max(1, damage - 2);
       this.state.bossShieldUsed = true;
       this.state.bannerText = "БРОНЯ КОНТУРА -2";
@@ -471,7 +529,12 @@ export class GameEngine {
     }
   }
 
-  private addHeat(amount: number, card: ResolvedCard | null, events: GameEvent[], source: "card" | "enemy" = "card"): void {
+  private addHeat(
+    amount: number,
+    card: ResolvedCard | null,
+    events: GameEvent[],
+    source: "card" | "enemy" | "effect" = "card",
+  ): void {
     if (amount === 0) {
       return;
     }
@@ -479,14 +542,26 @@ export class GameEngine {
     let delta = amount;
     delta = Math.floor(delta);
 
+    const playContext = card ? this.createEffectPlayContext(card) : null;
+    if (playContext) {
+      for (const effect of [...this.state.effects]) {
+        delta = effect.modifyHeat(delta, playContext);
+      }
+      this.pruneEffects();
+    }
+
+    const previousHeat = this.state.heat;
     this.state.heat = clamp(0, this.state.heat + delta, MAX_HEAT);
     events.push({ type: "float", text: `🔥${delta > 0 ? "+" : ""}${delta}`, tone: "heat" });
+    this.notifyHeatChanged({ card, previousHeat, nextHeat: this.state.heat, delta, source, events });
     this.checkOverheat();
   }
 
   private setHeat(value: number, events: GameEvent[]): void {
+    const previousHeat = this.state.heat;
     this.state.heat = clamp(0, value, MAX_HEAT);
     events.push({ type: "float", text: `🔥=${this.state.heat}`, tone: "heat" });
+    this.notifyHeatChanged({ card: null, previousHeat, nextHeat: this.state.heat, delta: this.state.heat - previousHeat, source: "effect", events });
     this.checkOverheat();
   }
 
@@ -499,16 +574,108 @@ export class GameEngine {
     this.state.effects.push(effect);
   }
 
-  private endTurnEffects(): void {
-    for (const effect of this.state.effects) {
-      effect.onTurnEnd();
+  private removeEffects(kind: string): void {
+    this.state.effects = this.state.effects.filter((effect) => effect.kind !== kind);
+  }
+
+  private applyCardStartEffects(card: ResolvedCard): void {
+    if (!this.currentPlay) {
+      return;
+    }
+
+    const playContext = this.createEffectPlayContext(card);
+    for (const effect of [...this.state.effects]) {
+      effect.beforeCardPlay(playContext, this.createEffectHost());
+    }
+    this.pruneEffects();
+  }
+
+  private runAfterCardEffects(card: ResolvedCard, events: GameEvent[]): void {
+    if (!this.currentPlay) {
+      return;
+    }
+
+    const playContext = this.createEffectPlayContext(card);
+    for (const effect of [...this.state.effects]) {
+      effect.afterCardPlay(playContext, this.createEffectHost(events));
+    }
+    this.pruneEffects();
+  }
+
+  private createEffectPlayContext(card: ResolvedCard): EffectPlayContext {
+    return {
+      card: toEffectCard(card),
+      state: this.createEffectBattleState(),
+      modifiers: this.currentPlay?.modifiers ?? {
+        repeatCard: 0,
+        ignoreArmor: false,
+        ignoreIce: false,
+      },
+    };
+  }
+
+  private createEffectBattleState(): EffectBattleState {
+    return {
+      heat: this.state.heat,
+      phase: this.state.phase,
+    };
+  }
+
+  private createEffectHost(events: GameEvent[] = []): EffectHost {
+    const engine = this;
+
+    return {
+      state: engine.createEffectBattleState(),
+      dealRepair(amount: number) {
+        engine.dealDamage(amount, REPAIR_EFFECT_CARD, events);
+      },
+      addHeat(amount: number) {
+        engine.addHeat(amount, null, events, "effect");
+      },
+      removeEffects(kind: string) {
+        engine.removeEffects(kind);
+      },
+      addEffect(effect: ActiveEffect) {
+        engine.addEffect(effect, []);
+      },
+    };
+  }
+
+  private notifyHeatChanged(input: {
+    card: ResolvedCard | null;
+    previousHeat: number;
+    nextHeat: number;
+    delta: number;
+    source: "card" | "enemy" | "effect";
+    events: GameEvent[];
+  }): void {
+    const ctx = {
+      card: input.card ? toEffectCard(input.card) : null,
+      state: this.createEffectBattleState(),
+      previousHeat: input.previousHeat,
+      nextHeat: input.nextHeat,
+      delta: input.delta,
+      source: input.source,
+    };
+
+    for (const effect of [...this.state.effects]) {
+      effect.onHeatChanged(ctx, this.createEffectHost(input.events));
+    }
+
+    this.pruneEffects();
+  }
+
+  private endTurnEffects(events: GameEvent[]): void {
+    for (const effect of [...this.state.effects]) {
+      effect.onCycleEnd(this.createEffectHost(events));
     }
 
     this.pruneEffects();
   }
 
   private pruneEffects(): void {
-    this.state.effects = this.state.effects.filter((effect) => !effect.isExpired());
+    const state = this.createEffectBattleState();
+    this.state.effects = this.state.effects.filter((effect) => !effect.isExpired(state));
   }
 
   private addCycleShield(amount: number, events: GameEvent[]): void {

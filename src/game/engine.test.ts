@@ -145,11 +145,62 @@ describe("game engine", () => {
     game.playCard(0);
 
     expect(game.state.effects).toHaveLength(1);
-    expect(game.state.effects[0]?.toView().description).toBe("Следующий урон +2");
+    expect(game.state.effects[0]?.toView().description).toBe("Следующий ремонт +2");
 
     game.playCard(0);
 
     expect(game.state.effects).toHaveLength(0);
+  });
+
+  it("applies focus only to the next repair card", () => {
+    const game = createGame({
+      seed: 29,
+      deck: [{ id: "focus" }, { id: "clamp" }],
+      stage: 1,
+    });
+
+    game.state.hand = [{ id: "focus" }, { id: "clamp" }];
+    game.state.drawPile = [];
+    game.state.discard = [];
+
+    game.playCard(0);
+    game.playCard(0);
+
+    expect(game.state.hp).toBe(game.state.maxHp - 7);
+  });
+
+  it("repeats the next card when relay is active", () => {
+    const game = createGame({
+      seed: 30,
+      deck: [{ id: "relay" }, { id: "clamp" }],
+      stage: 1,
+    });
+
+    game.state.hand = [{ id: "relay" }, { id: "clamp" }];
+    game.state.drawPile = [];
+    game.state.discard = [];
+
+    game.playCard(0);
+    game.playCard(0);
+
+    expect(game.state.hp).toBe(game.state.maxHp - 6);
+  });
+
+  it("reduces heat on the next hot card after cryo preparation", () => {
+    const game = createGame({
+      seed: 32,
+      deck: [{ id: "cryo-prep" }, { id: "laser" }],
+      stage: 1,
+    });
+
+    game.state.hand = [{ id: "cryo-prep" }, { id: "laser" }];
+    game.state.drawPile = [];
+    game.state.discard = [];
+
+    game.playCard(0);
+    game.playCard(0);
+
+    expect(game.state.heat).toBe(3);
   });
 
   it("does not let draw effects create hidden cards past the hand limit", () => {

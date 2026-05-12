@@ -68,6 +68,7 @@ export interface CardPlayContext {
   exhaustSelf(): void;
   addBonus(amount: number): void;
   addEffect(effect: ActiveEffect): void;
+  removeEffects(kind: string): void;
   addCycleShield(amount: number): void;
   emit(event: GameEvent): void;
   setMessage(html: string): void;
@@ -88,6 +89,8 @@ export interface SimpleCardEffect {
   exhaust?: boolean;
   damagePerHeat?: number;
   meltsIce?: boolean;
+  addEffect?: ActiveEffect | (() => ActiveEffect) | readonly (ActiveEffect | (() => ActiveEffect))[];
+  removeEffectKinds?: readonly string[];
 }
 
 export interface SimpleCardDefinitionOptions {
@@ -131,6 +134,17 @@ function createLogic(effect: SimpleCardEffect): CardLogic {
 
       if (effect.bonus) {
         ctx.addEffect(new BonusEffect(effect.bonus));
+      }
+
+      if (effect.addEffect) {
+        const effects = Array.isArray(effect.addEffect) ? effect.addEffect : [effect.addEffect];
+        effects.forEach((activeEffect) => {
+          ctx.addEffect(typeof activeEffect === "function" ? activeEffect() : activeEffect);
+        });
+      }
+
+      if (effect.removeEffectKinds) {
+        effect.removeEffectKinds.forEach((kind) => ctx.removeEffects(kind));
       }
 
       if (effect.cycleShield) {
