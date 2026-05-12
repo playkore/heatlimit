@@ -2,7 +2,7 @@ import { makeSimpleCardDefinition } from "./api";
 
 export const clampCard = makeSimpleCardDefinition({
   name: "ЗАЖИМ",
-  description: "Крепкий зажим",
+  description: "Ремонтирует на 3 ед.",
   tags: ["repair"],
   effects: [{ icon: "🔧", text: "+3" }],
   effect: { damage: 3 },

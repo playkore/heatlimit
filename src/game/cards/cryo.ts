@@ -2,7 +2,7 @@ import { makeSimpleCardDefinition } from "./api";
 
 export const cryoCard = makeSimpleCardDefinition({
   name: "КРИО",
-  description: "Ледяной импульс",
+  description: "Сбрасывает жар до 0 и сгорает.",
   tags: ["cooling", "utility", "exhaust"],
   effects: [
     { icon: "🔥", text: "=0" },

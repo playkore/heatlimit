@@ -2,7 +2,7 @@ import { makeSimpleCardDefinition } from "./api";
 
 export const strikeCard = makeSimpleCardDefinition({
   name: "УДАР",
-  description: "Сильный удар",
+  description: "Ремонтирует на 5 и даёт +1 жара.",
   tags: ["repair", "heat", "burst"],
   effects: [
     { icon: "🔧", text: "+5" },

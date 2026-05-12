@@ -2,7 +2,7 @@ import { makeSimpleCardDefinition } from "./api";
 
 export const impulseCard = makeSimpleCardDefinition({
   name: "ИМПУЛЬС",
-  description: "Сильный толчок",
+  description: "Наносит 1 урон за каждый жар и даёт +2 жара.",
   tags: ["repair", "heat", "burst"],
   effects: [
     { icon: "🔧", text: "×🔥" },

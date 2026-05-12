@@ -2,7 +2,7 @@ import { makeSimpleCardDefinition } from "./api";
 
 export const laserCard = makeSimpleCardDefinition({
   name: "ЛАЗЕР",
-  description: "Мощный прожиг",
+  description: "Наносит 10 урона и даёт +5 жара.",
   tags: ["repair", "heat", "burst"],
   effects: [
     { icon: "🔧", text: "+10" },

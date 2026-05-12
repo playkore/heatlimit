@@ -2,7 +2,7 @@ import { makeSimpleCardDefinition } from "./api";
 
 export const scanCard = makeSimpleCardDefinition({
   name: "СКАН",
-  description: "Быстрый анализ",
+  description: "Наносит 1 урон и даёт 2 бонуса.",
   tags: ["repair", "draw"],
   effects: [
     { icon: "🔧", text: "+1" },
