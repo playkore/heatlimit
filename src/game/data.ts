@@ -17,7 +17,7 @@ export interface DefectInstance extends DefectDefinition {
   hp: number;
 }
 
-export const MAX_HEAT = 10;
+export const MAX_HEAT = 15;
 export const MAX_ACTIONS = 2;
 export const HAND_SIZE = 3;
 export const FINAL_STAGE = 5;
