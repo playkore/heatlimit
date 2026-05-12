@@ -1,0 +1,25 @@
+{
+  "name": "Space Repair Card Battle",
+  "short_name": "Heat Limit",
+  "description": "A compact offline card battle about repairing overheated spacecraft systems.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#06110f",
+  "theme_color": "#06110f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
