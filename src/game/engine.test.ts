@@ -166,4 +166,25 @@ describe("game engine", () => {
     expect(game.state.hp).toBe(game.state.maxHp - 4);
   });
 
+  it("allows debug deck edits during combat", () => {
+    const game = createGame({
+      seed: 51,
+      deck: [{ id: "clamp" }, { id: "scan" }, { id: "cool" }],
+      stage: 1,
+    });
+
+    const startingDeckSize = game.state.deck.length;
+
+    expect(game.debugAddCard("laser")).toBe(true);
+    expect(game.state.deck).toHaveLength(startingDeckSize + 1);
+    expect(game.state.deck.at(-1)?.id).toBe("laser");
+    expect(game.state.drawPile.some((card) => card.id === "laser")).toBe(true);
+
+    const laserIndex = game.state.deck.findIndex((card) => card.id === "laser");
+
+    expect(game.debugRemoveCard(laserIndex)).toBe(true);
+    expect(game.state.deck.some((card) => card.id === "laser")).toBe(false);
+    expect(game.state.drawPile.some((card) => card.id === "laser")).toBe(false);
+  });
+
 });

@@ -626,6 +626,86 @@
       opacity: .75;
     }
 
+    .debug-deck-view {
+      text-align: left;
+    }
+
+    .debug-panel {
+      border: var(--line);
+      background: rgba(255, 253, 241, 0.55);
+      padding: 8px;
+      display: grid;
+      gap: 7px;
+    }
+
+    .debug-panel-title {
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      color: var(--muted);
+    }
+
+    .debug-add-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .debug-add-card,
+    .debug-remove-card {
+      border: var(--line);
+      background: white;
+      font-weight: 900;
+    }
+
+    .debug-add-card {
+      min-height: 42px;
+      padding: 5px 6px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 5px;
+      text-align: left;
+      font-size: 12px;
+      line-height: 1.05;
+    }
+
+    .debug-add-card .emoji {
+      font-size: 20px;
+      filter: grayscale(1) contrast(1.8);
+    }
+
+    .debug-deck-entry {
+      grid-template-columns: auto 1fr auto;
+    }
+
+    .debug-remove-card {
+      min-height: 36px;
+      padding: 5px 7px;
+      font-size: 11px;
+      align-self: center;
+    }
+
+    .debug-add-card:active,
+    .debug-remove-card:active {
+      background: var(--ink);
+      color: white;
+    }
+
+    .debug-add-card:disabled,
+    .debug-remove-card:disabled {
+      opacity: .55;
+    }
+
+    .debug-empty {
+      border: 2px dashed var(--muted);
+      color: var(--muted);
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 900;
+      text-align: center;
+    }
+
     .reward-button {
       border: var(--line);
       background: white;
@@ -797,6 +877,7 @@
         <div class="menu-title">МЕНЮ</div>
         <div class="menu-actions">
           <button class="menu-item" id="menuRestartButton" type="button">НОВЫЙ ЗАПУСК</button>
+          <button class="menu-item" id="menuDebugButton" type="button">ОТЛАДКА КОЛОДЫ</button>
           <button class="menu-item" id="menuCloseButton" type="button">ЗАКРЫТЬ</button>
         </div>
       </div>
