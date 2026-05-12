@@ -1,3 +1,6 @@
+import type { ActiveEffect, EffectView } from "../effects/api";
+import { BonusEffect } from "../effects/bonus";
+
 export interface EffectDef {
   icon: string;
   text: string;
@@ -21,8 +24,8 @@ export interface GameStateView {
   maxHp: number;
   heat: number;
   actions: number;
-  bonus: number;
   cycleShield: number;
+  effects: readonly EffectView[];
   hand: readonly DeckCardView[];
   drawPileCount: number;
   discardCount: number;
@@ -64,6 +67,7 @@ export interface CardPlayContext {
   discardHand(): void;
   exhaustSelf(): void;
   addBonus(amount: number): void;
+  addEffect(effect: ActiveEffect): void;
   addCycleShield(amount: number): void;
   emit(event: GameEvent): void;
   setMessage(html: string): void;
@@ -126,7 +130,7 @@ function createLogic(effect: SimpleCardEffect): CardLogic {
       }
 
       if (effect.bonus) {
-        ctx.addBonus(effect.bonus);
+        ctx.addEffect(new BonusEffect(effect.bonus));
       }
 
       if (effect.cycleShield) {

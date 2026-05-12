@@ -20,6 +20,8 @@ import {
   type GameStateView,
   type ResolvedCard,
 } from "./api";
+import { BonusEffect } from "./effects/bonus";
+import type { ActiveEffect } from "./effects/api";
 import { createSeededRng, type Rng } from "./rng";
 
 export type GamePhase = "combat" | "reward" | "ended";
@@ -51,8 +53,8 @@ export interface GameState {
   maxHp: number;
   heat: number;
   actions: number;
-  bonus: number;
   cycleShield: number;
+  effects: ActiveEffect[];
   drawPile: DeckCard[];
   discard: DeckCard[];
   hand: DeckCard[];
@@ -184,8 +186,8 @@ export class GameEngine {
 
     this.discardHand();
     this.state.actions = 0;
-    this.state.bonus = 0;
     this.state.bossShieldUsed = false;
+    this.endTurnEffects();
     this.drawHand();
 
     return events;
@@ -263,8 +265,8 @@ export class GameEngine {
       maxHp: 0,
       heat: 0,
       actions: 0,
-      bonus: 0,
       cycleShield: 0,
+      effects: [],
       drawPile: [],
       discard: [],
       hand: [],
@@ -288,8 +290,8 @@ export class GameEngine {
     this.state.hp = this.state.maxHp;
     this.state.heat = 0;
     this.state.actions = 0;
-    this.state.bonus = 0;
     this.state.cycleShield = 0;
+    this.state.effects = [];
     this.state.drawPile = this.rng.shuffle(this.state.deck.map(cloneCard));
     this.state.discard = [];
     this.state.hand = [];
@@ -301,6 +303,7 @@ export class GameEngine {
     this.state.overlayText = "";
     this.state.bannerText = "";
     this.state.messageHtml = defect.text;
+    this.state.effects = [];
 
     this.drawHand();
   }
@@ -370,8 +373,8 @@ export class GameEngine {
       maxHp: this.state.maxHp,
       heat: this.state.heat,
       actions: this.state.actions,
-      bonus: this.state.bonus,
       cycleShield: this.state.cycleShield,
+      effects: this.state.effects.map((effect) => effect.toView()),
       hand: this.state.hand.map(cloneCard),
       drawPileCount: this.state.drawPile.length,
       discardCount: this.state.discard.length,
@@ -413,6 +416,9 @@ export class GameEngine {
       addBonus(amount: number) {
         engine.addBonus(amount, events);
       },
+      addEffect(effect: ActiveEffect) {
+        engine.addEffect(effect, events);
+      },
       addCycleShield(amount: number) {
         engine.addCycleShield(amount, events);
       },
@@ -438,9 +444,11 @@ export class GameEngine {
 
     let damage = amount;
 
-    if (this.state.bonus > 0) {
-      damage += this.state.bonus;
-      this.state.bonus = 0;
+    if (this.state.effects.length > 0) {
+      for (const effect of this.state.effects) {
+        damage = effect.applyDamage(damage);
+      }
+      this.pruneEffects();
     }
 
     if (this.state.defect?.id === "ice" && !this.state.iceMelted) {
@@ -483,8 +491,24 @@ export class GameEngine {
   }
 
   private addBonus(amount: number, events: GameEvent[]): void {
-    this.state.bonus += amount;
+    this.addEffect(new BonusEffect(amount), events);
     events.push({ type: "float", text: `⬆️+${amount}`, tone: "info" });
+  }
+
+  private addEffect(effect: ActiveEffect, _events: GameEvent[]): void {
+    this.state.effects.push(effect);
+  }
+
+  private endTurnEffects(): void {
+    for (const effect of this.state.effects) {
+      effect.onTurnEnd();
+    }
+
+    this.pruneEffects();
+  }
+
+  private pruneEffects(): void {
+    this.state.effects = this.state.effects.filter((effect) => !effect.isExpired());
   }
 
   private addCycleShield(amount: number, events: GameEvent[]): void {

@@ -131,6 +131,27 @@ describe("game engine", () => {
     expect(game.state.heat).toBe(1);
   });
 
+  it("creates an active bonus effect that is consumed by the next hit", () => {
+    const game = createGame({
+      seed: 27,
+      deck: [{ id: "scan" }, { id: "clamp" }],
+      stage: 1,
+    });
+
+    game.state.hand = [{ id: "scan" }, { id: "clamp" }];
+    game.state.drawPile = [];
+    game.state.discard = [];
+
+    game.playCard(0);
+
+    expect(game.state.effects).toHaveLength(1);
+    expect(game.state.effects[0]?.toView().description).toBe("Следующий урон +2");
+
+    game.playCard(0);
+
+    expect(game.state.effects).toHaveLength(0);
+  });
+
   it("does not let draw effects create hidden cards past the hand limit", () => {
     const game = createGame({
       seed: 31,

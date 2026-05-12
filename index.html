@@ -325,6 +325,22 @@
       font-weight: 900;
     }
 
+    .active-effects {
+      display: grid;
+      grid-auto-flow: row;
+      gap: 5px;
+    }
+
+    .active-effect {
+      border: var(--line);
+      background: #f4f8ff;
+      padding: 4px 7px;
+      font-size: 12px;
+      line-height: 1.1;
+      font-weight: 900;
+      color: var(--ink);
+    }
+
     .card-area {
       padding: 9px;
       display: grid;
@@ -864,6 +880,7 @@
           </div>
           <div class="bar"><div class="bar-fill" id="hpFill"></div></div>
           <div class="message" id="message">Выбери карту. Тап сразу применяет действие.</div>
+          <div class="active-effects" id="activeEffects" hidden></div>
         </div>
       </section>
 

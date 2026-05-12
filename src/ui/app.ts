@@ -313,6 +313,7 @@ function createUi() {
     hpText: get("hpText"),
     hpFill: get("hpFill"),
     message: get("message"),
+    activeEffects: get("activeEffects"),
     cardArea: get("cardArea"),
     animationLayer: get("animationLayer"),
     drawPilePanel: get("drawPilePanel"),
@@ -394,6 +395,7 @@ function renderGame(
   ui.hpFill.style.width = `${(100 * repairProgress) / state.maxHp}%`;
   ui.heatFill.classList.toggle("danger", state.heat >= MAX_HEAT - 2);
   ui.message.innerHTML = state.messageHtml;
+  renderActiveEffects(ui, state.effects.map((effect) => effect.toView()));
   ui.drawPileCount.textContent = String(state.drawPile.length);
   ui.discardCount.textContent = String(state.discard.length);
 
@@ -508,6 +510,26 @@ function renderOverlay(
     });
     ui.rewardList.appendChild(button);
   });
+}
+
+function renderActiveEffects(
+  ui: Ui,
+  effects: readonly { kind: string; description: string }[],
+): void {
+  if (effects.length === 0) {
+    ui.activeEffects.hidden = true;
+    ui.activeEffects.innerHTML = "";
+    return;
+  }
+
+  ui.activeEffects.hidden = false;
+  ui.activeEffects.innerHTML = effects
+    .map(
+      (effect) => `
+        <div class="active-effect" data-effect-kind="${effect.kind}">${effect.description}</div>
+      `,
+    )
+    .join("");
 }
 
 function renderMenu(
