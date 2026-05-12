@@ -7,7 +7,7 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "strict": true,
     "jsx": "preserve",
-    "types": ["vitest/globals"],
+    "types": ["vitest/globals", "vite/client"],
     "noEmit": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,

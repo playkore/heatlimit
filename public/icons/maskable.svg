@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Space Repair maskable icon">
+  <rect width="512" height="512" fill="#06110f"/>
+  <circle cx="256" cy="256" r="160" fill="#f6f3df" stroke="#0b0b0b" stroke-width="16"/>
+  <path d="M161 285c0-62 45-112 101-112 19 0 38 6 53 17l-28 28c-8-4-16-6-25-6-34 0-61 32-61 73 0 15 4 29 10 40l-33 33c-11-21-17-45-17-73Z" fill="#0b0b0b"/>
+  <path d="M348 167l42 42-45 45-42-42 45-45Z" fill="#0b0b0b"/>
+  <path d="M176 382l-46-46 171-171 46 46-171 171Z" fill="#0b0b0b"/>
+  <path d="M304 321c10-11 16-26 16-43h40c0 29-10 57-28 79l-28-36Z" fill="#0b0b0b"/>
+</svg>
