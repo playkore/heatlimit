@@ -557,16 +557,7 @@ function renderDeckList(ui: Ui, deck: readonly DeckCard[]): void {
     const card = getCardProps(cardObj);
     const row = document.createElement("div");
     row.className = "deck-entry";
-    row.innerHTML = `
-      <div class="deck-entry-icon">${card.description}</div>
-      <div>
-        <div class="deck-entry-name">${card.name}</div>
-        <div class="deck-entry-desc">${card.effects
-          .map((effect) => `${effect.icon} ${effect.text}`)
-          .join(" · ")}</div>
-      </div>
-      <div class="deck-entry-count">#${index + 1}</div>
-    `;
+    row.innerHTML = deckEntryMarkup(card, { showCount: true, showDescription: true, count: index + 1 });
     ui.rewardList.appendChild(row);
   });
 }
@@ -592,7 +583,10 @@ function renderDebugDeckManager(
     button.type = "button";
     button.className = "debug-add-card";
     button.disabled = busy;
-    button.innerHTML = `<span class="debug-add-desc">${card.description}</span><span>${card.name}</span>`;
+    button.innerHTML = `
+      <div class="debug-add-name">${card.name}</div>
+      <div class="debug-add-desc">${card.description}</div>
+    `;
     button.addEventListener("click", () => {
       onAddCard(cardId);
     });
@@ -616,15 +610,7 @@ function renderDebugDeckManager(
     const card = getCardProps(cardObj);
     const row = document.createElement("div");
     row.className = "deck-entry debug-deck-entry";
-    row.innerHTML = `
-      <div class="deck-entry-icon">${card.description}</div>
-      <div>
-        <div class="deck-entry-name">${card.name}</div>
-        <div class="deck-entry-desc">${card.effects
-          .map((effect) => `${effect.icon} ${effect.text}`)
-          .join(" · ")}</div>
-      </div>
-    `;
+    row.innerHTML = deckEntryMarkup(card, { showCount: false, showDescription: true });
 
     const removeButton = document.createElement("button");
     removeButton.type = "button";
@@ -639,6 +625,24 @@ function renderDebugDeckManager(
   });
 
   ui.rewardList.appendChild(deckPanel);
+}
+
+function deckEntryMarkup(
+  card: ResolvedCard,
+  options: { showCount: boolean; showDescription: boolean; count?: number },
+): string {
+  const effects = card.effects.map((effect) => `${effect.icon} ${effect.text}`).join(" · ");
+
+  return `
+    <div class="deck-entry-main">
+      <div class="deck-entry-head">
+        <div class="deck-entry-name">${card.name}</div>
+        <div class="deck-entry-effects">${effects}</div>
+      </div>
+      ${options.showDescription ? `<div class="deck-entry-desc">${card.description}</div>` : ""}
+    </div>
+    ${options.showCount ? `<div class="deck-entry-count">#${options.count ?? ""}</div>` : ""}
+  `;
 }
 
 function renderSaveCardList(
