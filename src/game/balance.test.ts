@@ -48,11 +48,11 @@ describe("balance scenarios", () => {
     const game = runBalanceScript({
       seed: 17,
       deck: ["laser", "laser", "laser", "laser"],
-      turns: ["laser", "laser"],
+      turns: ["laser", "laser", "laser"],
     });
 
     expect(game.state.phase).toBe("ended");
     expect(game.state.overlayTitle).toBe("ПЕРЕГРЕВ");
-    expect(game.state.heat).toBe(10);
+    expect(game.state.heat).toBe(15);
   });
 });

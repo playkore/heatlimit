@@ -105,14 +105,14 @@ describe("game engine", () => {
     game.state.hand = [{ id: "laser" }];
     game.state.drawPile = [];
     game.state.discard = [];
-    game.state.heat = 5;
+    game.state.heat = 10;
 
     game.playCard(0);
 
     expect(game.state.phase).toBe("ended");
     expect(game.state.endReason).toBe("death");
     expect(game.state.overlayTitle).toBe("ПЕРЕГРЕВ");
-    expect(game.state.heat).toBe(10);
+    expect(game.state.heat).toBe(15);
   });
 
   it("applies spark heat to repair cards even when they have no heat effect", () => {
