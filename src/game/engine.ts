@@ -27,7 +27,7 @@ export type { GameEvent } from "./api";
 
 export interface RewardOption {
   kind: "card";
-  icon: string;
+  description: string;
   name: string;
   desc: string;
   cardId: CardId;
@@ -555,7 +555,7 @@ export class GameEngine {
     const card = cardDb[cardId];
     return {
       kind: "card",
-      icon: card.icon,
+      description: card.description,
       name: `НОВАЯ КАРТА: ${card.name}`,
       desc: `${effectText(card.effects)}. ${card.text}`,
       cardId,

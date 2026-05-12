@@ -2,7 +2,7 @@ import { makeSimpleCardDefinition } from "./api";
 
 export const coolCard = makeSimpleCardDefinition({
   name: "ОХЛАД.",
-  icon: "❄️",
+  description: "Сброс жара",
   tags: ["cooling", "utility"],
   effects: [{ icon: "🔥", text: "-3" }],
   effect: { heat: -3 },

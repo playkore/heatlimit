@@ -68,7 +68,7 @@ describe("game engine", () => {
 
     game.state.phase = "reward";
     game.state.pendingRewards = [
-      { kind: "card", icon: "🧪", name: "TEST CARD", desc: "test", cardId: "laser" },
+      { kind: "card", description: "Тестовая карта", name: "TEST CARD", desc: "test", cardId: "laser" },
     ];
 
     game.chooseReward(0);

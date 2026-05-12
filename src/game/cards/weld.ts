@@ -2,7 +2,7 @@ import { makeSimpleCardDefinition } from "./api";
 
 export const weldCard = makeSimpleCardDefinition({
   name: "СВАРКА",
-  icon: "⚡",
+  description: "Точный шов",
   tags: ["repair", "heat", "burst"],
   effects: [
     { icon: "🔧", text: "+7" },

@@ -536,7 +536,7 @@ function renderDeckList(ui: Ui, deck: readonly DeckCard[]): void {
     const row = document.createElement("div");
     row.className = "deck-entry";
     row.innerHTML = `
-      <div class="deck-entry-icon emoji">${card.icon}</div>
+      <div class="deck-entry-icon">${card.description}</div>
       <div>
         <div class="deck-entry-name">${card.name}</div>
         <div class="deck-entry-desc">${card.effects
@@ -570,7 +570,7 @@ function renderDebugDeckManager(
     button.type = "button";
     button.className = "debug-add-card";
     button.disabled = busy;
-    button.innerHTML = `<span class="emoji">${card.icon}</span><span>${card.name}</span>`;
+    button.innerHTML = `<span class="debug-add-desc">${card.description}</span><span>${card.name}</span>`;
     button.addEventListener("click", () => {
       onAddCard(cardId);
     });
@@ -595,7 +595,7 @@ function renderDebugDeckManager(
     const row = document.createElement("div");
     row.className = "deck-entry debug-deck-entry";
     row.innerHTML = `
-      <div class="deck-entry-icon emoji">${card.icon}</div>
+      <div class="deck-entry-icon">${card.description}</div>
       <div>
         <div class="deck-entry-name">${card.name}</div>
         <div class="deck-entry-desc">${card.effects
@@ -641,7 +641,7 @@ function renderSaveCardList(
 
 function saveCardMarkup(card: ResolvedCard): string {
   return `
-    <div class="reward-icon emoji">${card.icon}</div>
+    <div class="reward-icon">${card.description}</div>
     <div>
       <div class="reward-name">${card.name}</div>
       <div class="reward-desc">${card.effects
@@ -653,7 +653,7 @@ function saveCardMarkup(card: ResolvedCard): string {
 
 function rewardMarkup(reward: RewardOption): string {
   return `
-    <div class="reward-icon emoji">${reward.icon}</div>
+    <div class="reward-icon">${reward.description}</div>
     <div>
       <div class="reward-name">${reward.name}</div>
       <div class="reward-desc">${reward.desc}</div>
@@ -912,7 +912,7 @@ function playDiscardAnimation(ui: Ui, source: HTMLButtonElement, card: ResolvedC
 function cardMarkup(card: ResolvedCard): string {
   return `
     <div class="card-name">${card.name}</div>
-    <div class="card-icon emoji">${card.icon}</div>
+    <div class="card-icon">${card.description}</div>
     <div class="card-effects">
       ${card.effects
         .map(

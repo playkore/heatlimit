@@ -39,7 +39,7 @@ export interface GameEvent {
 export interface ResolvedCard {
   id: string;
   name: string;
-  icon: string;
+  description: string;
   tags: readonly CardTag[];
   effects: readonly EffectDef[];
   text: string;
@@ -88,7 +88,7 @@ export interface SimpleCardEffect {
 
 export interface SimpleCardDefinitionOptions {
   name: string;
-  icon: string;
+  description: string;
   tags?: readonly CardTag[];
   effects: readonly EffectDef[];
   text: string;
@@ -97,7 +97,7 @@ export interface SimpleCardDefinitionOptions {
 
 export interface CardDefinition {
   name: string;
-  icon: string;
+  description: string;
   tags: readonly CardTag[];
   effects: readonly EffectDef[];
   text: string;
@@ -149,7 +149,7 @@ export function makeSimpleCardDefinition(options: SimpleCardDefinitionOptions): 
 
   return {
     name: options.name,
-    icon: options.icon,
+    description: options.description,
     tags: options.tags ?? [],
     effects: options.effects,
     text: options.text,

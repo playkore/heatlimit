@@ -20,6 +20,6 @@ export function getCardProps(card: DeckCard): ResolvedCard {
     ...base,
     id: card.id,
     name: base.name,
-    icon: base.icon,
+    description: base.description,
   };
 }

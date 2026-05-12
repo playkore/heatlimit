@@ -2,7 +2,7 @@ import { makeSimpleCardDefinition } from "./api";
 
 export const pasteCard = makeSimpleCardDefinition({
   name: "ТЕРМОП.",
-  icon: "🧴",
+  description: "Изоляция шва",
   tags: ["cooling", "utility"],
   effects: [
     { icon: "🔥", text: "-1" },

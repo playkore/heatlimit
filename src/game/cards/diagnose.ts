@@ -2,7 +2,7 @@ import { makeSimpleCardDefinition } from "./api";
 
 export const diagnoseCard = makeSimpleCardDefinition({
   name: "ДИАГН.",
-  icon: "🛰️",
+  description: "Точный анализ",
   tags: ["draw", "utility"],
   effects: [{ icon: "🃏", text: "+2" }],
   effect: { draw: 2 },

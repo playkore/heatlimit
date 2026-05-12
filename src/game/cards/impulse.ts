@@ -2,7 +2,7 @@ import { makeSimpleCardDefinition } from "./api";
 
 export const impulseCard = makeSimpleCardDefinition({
   name: "ИМПУЛЬС",
-  icon: "💢",
+  description: "Сильный толчок",
   tags: ["repair", "heat", "burst"],
   effects: [
     { icon: "🔧", text: "×🔥" },
