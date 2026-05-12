@@ -211,6 +211,42 @@ export class GameEngine {
     return [];
   }
 
+  debugAddCard(cardId: CardId): boolean {
+    if (!(cardId in cardDb)) {
+      return false;
+    }
+
+    const addedCard = { id: cardId };
+    this.state.deck.push(cloneCard(addedCard));
+
+    if (this.state.phase === "combat") {
+      this.state.drawPile.push(cloneCard(addedCard));
+    }
+
+    return true;
+  }
+
+  debugRemoveCard(deckIndex: number): boolean {
+    if (!Number.isInteger(deckIndex) || deckIndex < 0 || deckIndex >= this.state.deck.length) {
+      return false;
+    }
+
+    const [removedCard] = this.state.deck.splice(deckIndex, 1);
+    if (!removedCard || this.state.phase !== "combat") {
+      return true;
+    }
+
+    this.removeOneCardById(this.state.drawPile, removedCard.id) ||
+      this.removeOneCardById(this.state.discard, removedCard.id) ||
+      this.removeOneCardById(this.state.hand, removedCard.id);
+
+    if (this.state.hand.length < HAND_SIZE) {
+      this.drawOne();
+    }
+
+    return true;
+  }
+
   getRewardOptions(): readonly RewardOption[] {
     return this.state.pendingRewards;
   }
@@ -309,6 +345,16 @@ export class GameEngine {
     }
 
     return false;
+  }
+
+  private removeOneCardById(cards: DeckCard[], cardId: CardId): boolean {
+    const index = cards.findIndex((card) => card.id === cardId);
+    if (index < 0) {
+      return false;
+    }
+
+    cards.splice(index, 1);
+    return true;
   }
 
   private discardHand(): void {

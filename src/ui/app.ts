@@ -1,4 +1,4 @@
-import { FINAL_STAGE, HAND_SIZE, MAX_ACTIONS, MAX_HEAT, getCardProps } from "../game/data";
+import { FINAL_STAGE, HAND_SIZE, MAX_ACTIONS, MAX_HEAT, cardDb, getCardProps, type CardId } from "../game/data";
 import { createGame, type GameEngine, type GameEvent, type RewardOption } from "../game/engine";
 import type { GameStateView, ResolvedCard } from "../game/api";
 import { appendSavedCard, buildStartingDeck, clearProfile, createDefaultProfile, loadProfile, saveProfile, type StorageLike } from "./profile";
@@ -12,6 +12,7 @@ const DRAW_FLY_DURATION = 420;
 const SOURCE_CARD_RATIO = 0.42;
 const TARGET_DISCARD_RATIO = 0.36;
 const PILE_MARGIN = 6;
+const DEBUG_CARD_IDS = Object.keys(cardDb) as CardId[];
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -52,6 +53,7 @@ export function bootstrapApp(): void {
   let previousSnapshot: Snapshot | null = null;
   let deckOpen = false;
   let menuOpen = false;
+  let debugDeckOpen = false;
   let selectedSaveCardIndex: number | null = null;
 
   function render(reason: RenderReason = "refresh") {
@@ -64,8 +66,19 @@ export function bootstrapApp(): void {
     }
 
     renderGame(ui, game, busy, profile.runNumber, playCard);
-    renderOverlay(ui, game, busy, deckOpen, showDeck, selectedSaveCardIndex, chooseReward, chooseSaveCard, closeDeck);
-    renderMenu(ui, menuOpen, startNewGame, closeMenu);
+    renderOverlay(
+      ui,
+      game,
+      busy,
+      showDeck,
+      debugDeckOpen,
+      selectedSaveCardIndex,
+      chooseReward,
+      chooseSaveCard,
+      addDebugCard,
+      removeDebugCard,
+    );
+    renderMenu(ui, menuOpen, startNewGame, openDebugDeck, closeMenu);
     scheduleHandAnimations(ui, previousSnapshot, currentSnapshot, reason, visibleCards);
     previousSnapshot = currentSnapshot;
   }
@@ -87,6 +100,7 @@ export function bootstrapApp(): void {
     game = createGame({ seed: sessionSeed(), deck: buildStartingDeck(profile) });
     busy = false;
     deckOpen = false;
+    debugDeckOpen = false;
     selectedSaveCardIndex = null;
     render("draw");
   }
@@ -98,6 +112,7 @@ export function bootstrapApp(): void {
     busy = false;
     deckOpen = false;
     menuOpen = false;
+    debugDeckOpen = false;
     selectedSaveCardIndex = null;
     render("draw");
   }
@@ -178,6 +193,7 @@ export function bootstrapApp(): void {
     }
 
     deckOpen = true;
+    debugDeckOpen = false;
     render("refresh");
   }
 
@@ -190,6 +206,44 @@ export function bootstrapApp(): void {
     render("refresh");
   }
 
+  function openDebugDeck() {
+    if (busy) {
+      return;
+    }
+
+    debugDeckOpen = true;
+    deckOpen = false;
+    menuOpen = false;
+    render("refresh");
+  }
+
+  function closeDebugDeck() {
+    if (!debugDeckOpen) {
+      return;
+    }
+
+    debugDeckOpen = false;
+    render("refresh");
+  }
+
+  function addDebugCard(cardId: CardId) {
+    if (busy || !debugDeckOpen) {
+      return;
+    }
+
+    game.debugAddCard(cardId);
+    render("refresh");
+  }
+
+  function removeDebugCard(index: number) {
+    if (busy || !debugDeckOpen) {
+      return;
+    }
+
+    game.debugRemoveCard(index);
+    render("refresh");
+  }
+
   function openMenu() {
     if (busy) {
       return;
@@ -197,6 +251,7 @@ export function bootstrapApp(): void {
 
     menuOpen = true;
     deckOpen = false;
+    debugDeckOpen = false;
     render("refresh");
   }
 
@@ -211,17 +266,23 @@ export function bootstrapApp(): void {
 
   ui.menuButton.addEventListener("click", openMenu);
   ui.restartButton.addEventListener("click", startNewRun);
-  ui.menuRestartButton.addEventListener("click", startNewGame);
-  ui.menuCloseButton.addEventListener("click", closeMenu);
   ui.deckButton.addEventListener("click", openDeck);
-  ui.overlayCloseButton.addEventListener("click", closeDeck);
+  ui.overlayCloseButton.addEventListener("click", () => {
+    if (debugDeckOpen) {
+      closeDebugDeck();
+    } else {
+      closeDeck();
+    }
+  });
   ui.menuOverlay.addEventListener("click", (event) => {
     if (event.target === ui.menuOverlay) {
       closeMenu();
     }
   });
   ui.overlay.addEventListener("click", (event) => {
-    if (event.target === ui.overlay && deckOpen && game.state.phase === "combat") {
+    if (event.target === ui.overlay && debugDeckOpen) {
+      closeDebugDeck();
+    } else if (event.target === ui.overlay && deckOpen && game.state.phase === "combat") {
       closeDeck();
     }
   });
@@ -268,6 +329,7 @@ function createUi() {
     menuButton: get("menuButton") as HTMLButtonElement,
     menuOverlay: get("menuOverlay"),
     menuRestartButton: get("menuRestartButton") as HTMLButtonElement,
+    menuDebugButton: get("menuDebugButton") as HTMLButtonElement,
     menuCloseButton: get("menuCloseButton") as HTMLButtonElement,
     cycleBanner: get("cycleBanner"),
   };
@@ -365,23 +427,35 @@ function renderOverlay(
   ui: Ui,
   game: GameEngine,
   busy: boolean,
-  deckOpen: boolean,
   showDeck: boolean,
+  debugDeckOpen: boolean,
   selectedSaveCardIndex: number | null,
   onChooseReward: (index: number) => void,
   onChooseSaveCard: (index: number) => void,
-  onCloseDeck: () => void,
+  onAddDebugCard: (cardId: CardId) => void,
+  onRemoveDebugCard: (index: number) => void,
 ): void {
   const state = game.state;
-  const visible = state.phase !== "combat" || showDeck;
+  const visible = debugDeckOpen || state.phase !== "combat" || showDeck;
   ui.overlay.classList.toggle("show", visible);
-  ui.overlay.classList.toggle("deck-mode", showDeck);
+  ui.overlay.classList.toggle("deck-mode", showDeck || debugDeckOpen);
 
   if (!visible) {
     ui.rewardList.innerHTML = "";
-    ui.rewardList.classList.remove("deck-view");
+    ui.rewardList.classList.remove("deck-view", "debug-deck-view");
     ui.restartButton.style.display = "none";
     ui.overlayCloseButton.style.display = "none";
+    return;
+  }
+
+  if (debugDeckOpen) {
+    ui.overlayTitle.textContent = "ОТЛАДКА КОЛОДЫ";
+    ui.overlayText.textContent = `${state.deck.length} карт в текущей колоде. Добавляй любые карты игры или удаляй лишние.`;
+    ui.restartButton.style.display = "none";
+    ui.overlayCloseButton.style.display = "block";
+    ui.rewardList.classList.remove("deck-view");
+    ui.rewardList.classList.add("debug-deck-view");
+    renderDebugDeckManager(ui, state.deck, busy, onAddDebugCard, onRemoveDebugCard);
     return;
   }
 
@@ -390,6 +464,7 @@ function renderOverlay(
     ui.overlayText.textContent = `${state.deck.length} инструментов.`;
     ui.restartButton.style.display = "none";
     ui.overlayCloseButton.style.display = "block";
+    ui.rewardList.classList.remove("debug-deck-view");
     ui.rewardList.classList.add("deck-view");
     renderDeckList(ui, state.deck);
     return;
@@ -397,7 +472,7 @@ function renderOverlay(
 
   ui.overlayTitle.textContent = state.overlayTitle;
   ui.overlayCloseButton.style.display = "none";
-  ui.rewardList.classList.remove("deck-view");
+  ui.rewardList.classList.remove("deck-view", "debug-deck-view");
   ui.rewardList.innerHTML = "";
 
   if (state.phase === "ended" && state.endReason === "death") {
@@ -435,7 +510,13 @@ function renderOverlay(
   });
 }
 
-function renderMenu(ui: Ui, open: boolean, onStartNewRun: () => void, onClose: () => void): void {
+function renderMenu(
+  ui: Ui,
+  open: boolean,
+  onStartNewRun: () => void,
+  onOpenDebugDeck: () => void,
+  onClose: () => void,
+): void {
   ui.menuOverlay.classList.toggle("show", open);
   ui.menuRestartButton.disabled = false;
   ui.menuRestartButton.textContent = "НОВАЯ ИГРА";
@@ -443,6 +524,7 @@ function renderMenu(ui: Ui, open: boolean, onStartNewRun: () => void, onClose: (
     onStartNewRun();
     onClose();
   };
+  ui.menuDebugButton.onclick = onOpenDebugDeck;
   ui.menuCloseButton.onclick = onClose;
 }
 
@@ -465,6 +547,76 @@ function renderDeckList(ui: Ui, deck: readonly DeckCard[]): void {
     `;
     ui.rewardList.appendChild(row);
   });
+}
+
+function renderDebugDeckManager(
+  ui: Ui,
+  deck: readonly DeckCard[],
+  busy: boolean,
+  onAddCard: (cardId: CardId) => void,
+  onRemoveCard: (index: number) => void,
+): void {
+  ui.rewardList.innerHTML = "";
+
+  const addPanel = document.createElement("section");
+  addPanel.className = "debug-panel";
+  addPanel.innerHTML = `<div class="debug-panel-title">ДОБАВИТЬ КАРТУ</div>`;
+
+  const addGrid = document.createElement("div");
+  addGrid.className = "debug-add-grid";
+  DEBUG_CARD_IDS.forEach((cardId) => {
+    const card = getCardProps({ id: cardId });
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "debug-add-card";
+    button.disabled = busy;
+    button.innerHTML = `<span class="emoji">${card.icon}</span><span>${card.name}</span>`;
+    button.addEventListener("click", () => {
+      onAddCard(cardId);
+    });
+    addGrid.appendChild(button);
+  });
+  addPanel.appendChild(addGrid);
+  ui.rewardList.appendChild(addPanel);
+
+  const deckPanel = document.createElement("section");
+  deckPanel.className = "debug-panel";
+  deckPanel.innerHTML = `<div class="debug-panel-title">ТЕКУЩАЯ КОЛОДА</div>`;
+
+  if (deck.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "debug-empty";
+    empty.textContent = "Колода пуста. Добавь карту выше.";
+    deckPanel.appendChild(empty);
+  }
+
+  deck.forEach((cardObj, index) => {
+    const card = getCardProps(cardObj);
+    const row = document.createElement("div");
+    row.className = "deck-entry debug-deck-entry";
+    row.innerHTML = `
+      <div class="deck-entry-icon emoji">${card.icon}</div>
+      <div>
+        <div class="deck-entry-name">${card.name}</div>
+        <div class="deck-entry-desc">${card.effects
+          .map((effect) => `${effect.icon} ${effect.text}`)
+          .join(" · ")}</div>
+      </div>
+    `;
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "debug-remove-card";
+    removeButton.disabled = busy;
+    removeButton.textContent = "УДАЛИТЬ";
+    removeButton.addEventListener("click", () => {
+      onRemoveCard(index);
+    });
+    row.appendChild(removeButton);
+    deckPanel.appendChild(row);
+  });
+
+  ui.rewardList.appendChild(deckPanel);
 }
 
 function renderSaveCardList(
