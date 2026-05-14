@@ -189,6 +189,81 @@ describe("game engine", () => {
     expect(game.state.heat).toBe(1);
   });
 
+  it("cools gradually across the next two cycles with radiator", () => {
+    const game = createGame({
+      seed: 24,
+      deck: [{ id: "radiator" }],
+      stage: 1,
+    });
+
+    game.state.defect = {
+      id: "test",
+      title: "TEST",
+      emoji: "🛠",
+      baseHp: 1,
+      hp: 1,
+      heatPerCycle: 0,
+      text: "",
+      subtitle: "",
+    };
+    game.state.hand = [{ id: "radiator" }];
+    game.state.drawPile = [];
+    game.state.discard = [];
+    game.state.heat = 4;
+
+    game.playCard(0);
+
+    expect(game.state.effects).toHaveLength(1);
+
+    game.resolveEnemyTurn();
+
+    expect(game.state.heat).toBe(3);
+    expect(game.state.effects).toHaveLength(1);
+
+    game.resolveEnemyTurn();
+
+    expect(game.state.heat).toBe(2);
+    expect(game.state.effects).toHaveLength(0);
+  });
+
+  it("repeats radiator with relay and stacks the delayed cooling", () => {
+    const game = createGame({
+      seed: 25,
+      deck: [{ id: "relay" }, { id: "radiator" }],
+      stage: 1,
+    });
+
+    game.state.defect = {
+      id: "test",
+      title: "TEST",
+      emoji: "🛠",
+      baseHp: 1,
+      hp: 1,
+      heatPerCycle: 0,
+      text: "",
+      subtitle: "",
+    };
+    game.state.hand = [{ id: "relay" }, { id: "radiator" }];
+    game.state.drawPile = [];
+    game.state.discard = [];
+    game.state.heat = 5;
+
+    game.playCard(0);
+    game.playCard(0);
+
+    expect(game.state.effects).toHaveLength(2);
+
+    game.resolveEnemyTurn();
+
+    expect(game.state.heat).toBe(3);
+    expect(game.state.effects).toHaveLength(2);
+
+    game.resolveEnemyTurn();
+
+    expect(game.state.heat).toBe(1);
+    expect(game.state.effects).toHaveLength(0);
+  });
+
   it("applies the scan bonus to the next repair card in the same hand", () => {
     const game = createGame({
       seed: 27,
@@ -211,6 +286,31 @@ describe("game engine", () => {
     expect(game.state.hp).toBe(game.state.maxHp - 6);
   });
 
+  it("keeps scan active through cooling cards until the next repair card", () => {
+    const game = createGame({
+      seed: 28,
+      deck: [{ id: "scan" }, { id: "bypass" }, { id: "clamp" }, { id: "clamp" }],
+      stage: 1,
+    });
+
+    game.state.hand = [{ id: "scan" }, { id: "bypass" }, { id: "clamp" }];
+    game.state.drawPile = [];
+    game.state.discard = [];
+    game.state.heat = 4;
+
+    game.playCard(0);
+    game.playCard(0);
+
+    expect(game.state.effects).toHaveLength(1);
+    expect(game.state.effects[0]?.toView().description).toBe("Следующий ремонт удваивается");
+
+    game.state.actions = 0;
+
+    game.playCard(0);
+
+    expect(game.state.hp).toBe(game.state.maxHp - 6);
+  });
+
   it("repeats the next card when relay is active", () => {
     const game = createGame({
       seed: 30,
@@ -228,9 +328,28 @@ describe("game engine", () => {
     expect(game.state.hp).toBe(game.state.maxHp - 6);
   });
 
-  it("does not let draw effects create hidden cards past the hand limit", () => {
+  it("keeps the hand within the limit when bypass is repeated by relay", () => {
     const game = createGame({
       seed: 31,
+      deck: [{ id: "relay" }, { id: "bypass" }, { id: "clamp" }, { id: "clamp" }],
+      stage: 3,
+    });
+
+    game.state.hand = [{ id: "relay" }, { id: "bypass" }, { id: "clamp" }];
+    game.state.drawPile = [{ id: "clamp" }, { id: "clamp" }, { id: "clamp" }];
+    game.state.discard = [];
+    game.state.heat = 6;
+
+    game.playCard(0);
+    game.playCard(0);
+
+    expect(game.state.heat).toBe(2);
+    expect(game.state.hand.length).toBe(HAND_SIZE);
+  });
+
+  it("does not let draw effects create hidden cards past the hand limit", () => {
+    const game = createGame({
+      seed: 32,
       deck: [{ id: "diagnose" }, { id: "clamp" }, { id: "clamp" }, { id: "clamp" }],
       stage: 1,
     });

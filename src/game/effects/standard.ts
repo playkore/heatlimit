@@ -164,6 +164,31 @@ export class DroneEffect extends SingleUseEffect {
   }
 }
 
+export class RadiatorEffect extends ActiveEffect {
+  readonly kind = "radiator";
+
+  constructor(private remainingCycles = 2) {
+    super();
+  }
+
+  getDescription(): string {
+    return "В конце 2 циклов: -1 жара";
+  }
+
+  override onCycleEnd(host: EffectHost): void {
+    if (this.remainingCycles <= 0) {
+      return;
+    }
+
+    host.addHeat(-1);
+    this.remainingCycles -= 1;
+  }
+
+  override isExpired(): boolean {
+    return this.remainingCycles <= 0;
+  }
+}
+
 export class RelayEffect extends SingleUseEffect {
   readonly kind = "relay";
 

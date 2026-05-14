@@ -8,6 +8,8 @@ import { markingCard } from "./marking";
 import { patchCard } from "./patch";
 import { redZoneCard } from "./red-zone";
 import { relayCard } from "./relay";
+import { radiatorCard } from "./radiator";
+import { bypassCard } from "./bypass";
 import { scanCard } from "./scan";
 import { ventCard } from "./vent";
 import { weldCard } from "./weld";
@@ -23,6 +25,8 @@ export const cardDb = {
   laser: laserCard,
   marking: markingCard,
   drone: droneCard,
+  radiator: radiatorCard,
+  bypass: bypassCard,
   "red-zone": redZoneCard,
   relay: relayCard,
   weld: weldCard,
@@ -41,6 +45,8 @@ export const cardRewardPool: readonly CardId[] = [
   "impulse",
   "laser",
   "drone",
+  "radiator",
+  "bypass",
   "red-zone",
   "relay",
   "marking",
