@@ -1,13 +1,11 @@
 import { makeSimpleCardDefinition } from "./api";
+import { NextHandBrittleEffect } from "../effects/standard";
 
 export const scanCard = makeSimpleCardDefinition({
   name: "СКАН",
-  description: "Наносит 1 урон и даёт +2 к следующему ремонту.",
+  description: "Даёт ×2 к первой ремонтной карте следующей руки.",
   tags: ["repair", "draw"],
-  effects: [
-    { icon: "🔧", text: "+1" },
-    { icon: "⬆️", text: "+2" },
-  ],
-  effect: { damage: 1, bonus: 2 },
+  effects: [{ icon: "×2", text: "след. рука" }],
+  effect: { addEffect: () => new NextHandBrittleEffect() },
   text: "Слабое место найдено.",
 });

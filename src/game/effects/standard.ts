@@ -114,6 +114,34 @@ export class BrittleEffect extends SingleUseEffect {
   }
 }
 
+export class NextHandBrittleEffect extends ActiveEffect {
+  readonly kind = "next-hand-brittle";
+
+  private armed = false;
+  private consumed = false;
+
+  getDescription(): string {
+    return this.armed ? "Следующая ремонтная карта ×2" : "Следующая ремонтная карта следующей руки ×2";
+  }
+
+  override modifyDamage(amount: number, ctx: EffectPlayContext): number {
+    if (this.consumed || !this.armed || !ctx.card.tags.includes("repair")) {
+      return amount;
+    }
+
+    this.consumed = true;
+    return amount * 2;
+  }
+
+  override onCycleEnd(): void {
+    this.armed = true;
+  }
+
+  override isExpired(): boolean {
+    return this.consumed;
+  }
+}
+
 export class RedZoneEffect extends ActiveEffect {
   readonly kind = "red-zone";
 
