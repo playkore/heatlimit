@@ -8,6 +8,6 @@ export const weldCard = makeSimpleCardDefinition({
     { icon: "🔧", text: "+7" },
     { icon: "🔥", text: "+3" },
   ],
-  effect: { damage: 7, heat: 3, meltsIce: true },
+  effect: { damage: 7, heat: 3 },
   text: "Шов наложен. Жар растёт.",
 });

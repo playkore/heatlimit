@@ -382,8 +382,7 @@ function renderGame(
 
   ui.stageText.textContent = `ЗАБЕГ ${runNumber} · ${defect.boss ? `БОСС ${state.stage}/${FINAL_STAGE}` : `СПУТНИК ${state.stage}/${FINAL_STAGE}`}`;
   ui.enemyTitle.textContent = defect.title;
-  const extra = defect.id === "ice" && state.iceMelted ? "лёд расплавлен" : defect.subtitle;
-  ui.enemySubtitle.textContent = `${extra} · цикл: 🔥+${defect.heatPerCycle}`;
+  ui.enemySubtitle.textContent = `${defect.subtitle} · цикл: 🔥+${defect.heatPerCycle}`;
   ui.enemyEmoji.textContent = defect.emoji;
   ui.enemy.classList.toggle("boss", !!defect.boss);
   ui.actionsText.textContent = `${state.actions}/${MAX_ACTIONS}`;

@@ -213,7 +213,7 @@ export class BypassEffect extends SingleUseEffect {
   readonly kind = "bypass";
 
   getDescription(): string {
-    return "Следующая карта игнорирует броню и лёд";
+    return "Следующая карта игнорирует броню";
   }
 
   override beforeCardPlay(ctx: EffectPlayContext): void {
@@ -223,6 +223,5 @@ export class BypassEffect extends SingleUseEffect {
 
     this.consume();
     ctx.modifiers.ignoreArmor = true;
-    ctx.modifiers.ignoreIce = true;
   }
 }

@@ -77,7 +77,6 @@ export interface GameState {
   drawPile: DeckCard[];
   discard: DeckCard[];
   hand: DeckCard[];
-  iceMelted: boolean;
   bossShieldUsed: boolean;
   pendingRewards: RewardOption[];
   endReason: "death" | "victory" | null;
@@ -172,7 +171,6 @@ export class GameEngine {
       modifiers: {
         repeatCard: 0,
         ignoreArmor: false,
-        ignoreIce: false,
       },
     };
 
@@ -323,7 +321,6 @@ export class GameEngine {
       drawPile: [],
       discard: [],
       hand: [],
-      iceMelted: false,
       bossShieldUsed: false,
       pendingRewards: [],
       endReason: null,
@@ -349,7 +346,6 @@ export class GameEngine {
     this.state.discard = [];
     this.state.hand = [];
     this.state.endReason = null;
-    this.state.iceMelted = false;
     this.state.bossShieldUsed = false;
     this.state.pendingRewards = [];
     this.state.overlayTitle = "";
@@ -490,9 +486,6 @@ export class GameEngine {
           engine.currentPlay.messageSet = true;
         }
       },
-      meltIce() {
-        engine.meltIce(events);
-      },
     };
   }
 
@@ -508,10 +501,6 @@ export class GameEngine {
       damage = effect.modifyDamage(damage, playContext);
     }
     this.pruneEffects();
-
-    if (!this.currentPlay?.modifiers.ignoreIce && this.state.defect?.id === "ice" && !this.state.iceMelted) {
-      damage = Math.max(1, damage - 1);
-    }
 
     if (!this.currentPlay?.modifiers.ignoreArmor && this.state.defect?.id === "boss" && !this.state.bossShieldUsed && card.tags.includes("repair")) {
       damage = Math.max(1, damage - 2);
@@ -609,7 +598,6 @@ export class GameEngine {
       modifiers: this.currentPlay?.modifiers ?? {
         repeatCard: 0,
         ignoreArmor: false,
-        ignoreIce: false,
       },
     };
   }
@@ -687,16 +675,6 @@ export class GameEngine {
     if (this.currentPlay) {
       this.currentPlay.exhausted = true;
     }
-  }
-
-  private meltIce(events: GameEvent[]): void {
-    if (this.state.defect?.id !== "ice" || this.state.iceMelted) {
-      return;
-    }
-
-    this.state.iceMelted = true;
-    this.state.bannerText = "ЛЁД РАСПЛАВЛЕН";
-    events.push({ type: "banner", text: "ЛЁД РАСПЛАВЛЕН" });
   }
 
   private checkOverheat(): void {

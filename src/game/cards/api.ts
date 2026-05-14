@@ -72,7 +72,6 @@ export interface CardPlayContext {
   addCycleShield(amount: number): void;
   emit(event: GameEvent): void;
   setMessage(html: string): void;
-  meltIce(): void;
 }
 
 export interface CardLogic {
@@ -88,7 +87,6 @@ export interface SimpleCardEffect {
   cycleShield?: number;
   exhaust?: boolean;
   damagePerHeat?: number;
-  meltsIce?: boolean;
   addEffect?: ActiveEffect | (() => ActiveEffect) | readonly (ActiveEffect | (() => ActiveEffect))[];
   removeEffectKinds?: readonly string[];
 }
@@ -114,10 +112,6 @@ export interface CardDefinition {
 function createLogic(effect: SimpleCardEffect): CardLogic {
   return {
     play(ctx) {
-      if (effect.meltsIce) {
-        ctx.meltIce();
-      }
-
       const damage =
         (effect.damage ?? 0) +
         (effect.damagePerHeat ? Math.max(1, ctx.state.heat) * effect.damagePerHeat : 0);

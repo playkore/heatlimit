@@ -8,6 +8,6 @@ export const laserCard = makeSimpleCardDefinition({
     { icon: "🔧", text: "+10" },
     { icon: "🔥", text: "+5" },
   ],
-  effect: { damage: 10, heat: 5, meltsIce: true },
+  effect: { damage: 10, heat: 5 },
   text: "Мощный прожиг. Сильный перегрев.",
 });

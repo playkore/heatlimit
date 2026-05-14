@@ -17,7 +17,6 @@ export interface EffectBattleState {
 export interface EffectPlayModifiers {
   repeatCard: number;
   ignoreArmor: boolean;
-  ignoreIce: boolean;
 }
 
 export interface EffectPlayContext {
