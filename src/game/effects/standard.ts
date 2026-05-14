@@ -1,4 +1,4 @@
-import { ActiveEffect, type EffectHeatContext, type EffectHost, type EffectPlayContext } from "./api";
+import { ActiveEffect, type EffectHost, type EffectPlayContext } from "./api";
 
 abstract class SingleUseEffect extends ActiveEffect {
   protected consumed = false;
@@ -114,34 +114,6 @@ export class BrittleEffect extends SingleUseEffect {
   }
 }
 
-export class NextHandBrittleEffect extends ActiveEffect {
-  readonly kind = "next-hand-brittle";
-
-  private armed = false;
-  private consumed = false;
-
-  getDescription(): string {
-    return this.armed ? "Следующая ремонтная карта ×2" : "Следующая ремонтная карта следующей руки ×2";
-  }
-
-  override modifyDamage(amount: number, ctx: EffectPlayContext): number {
-    if (this.consumed || !this.armed || !ctx.card.tags.includes("repair")) {
-      return amount;
-    }
-
-    this.consumed = true;
-    return amount * 2;
-  }
-
-  override onCycleEnd(): void {
-    this.armed = true;
-  }
-
-  override isExpired(): boolean {
-    return this.consumed;
-  }
-}
-
 export class RedZoneEffect extends ActiveEffect {
   readonly kind = "red-zone";
 
@@ -206,50 +178,5 @@ export class RelayEffect extends SingleUseEffect {
 
     this.consume();
     ctx.modifiers.repeatCard += 1;
-  }
-}
-
-export class CondenserEffect extends ActiveEffect {
-  readonly kind = "condenser";
-
-  constructor(private readonly repair = 1, private remainingCycles = 2) {
-    super();
-  }
-
-  getDescription(): string {
-    return `При охлаждении ремонт +${this.repair}`;
-  }
-
-  override onHeatChanged(ctx: EffectHeatContext, host: EffectHost): void {
-    if (this.remainingCycles <= 0 || ctx.delta >= 0) {
-      return;
-    }
-
-    host.dealRepair(this.repair);
-  }
-
-  override onCycleEnd(): void {
-    this.remainingCycles -= 1;
-  }
-
-  override isExpired(): boolean {
-    return this.remainingCycles <= 0;
-  }
-}
-
-export class BypassEffect extends SingleUseEffect {
-  readonly kind = "bypass";
-
-  getDescription(): string {
-    return "Следующая карта игнорирует броню";
-  }
-
-  override beforeCardPlay(ctx: EffectPlayContext): void {
-    if (this.consumed) {
-      return;
-    }
-
-    this.consume();
-    ctx.modifiers.ignoreArmor = true;
   }
 }

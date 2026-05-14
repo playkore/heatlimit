@@ -22,8 +22,6 @@ import {
 } from "./api";
 import { BonusEffect } from "./effects/bonus";
 import {
-  BypassEffect,
-  CondenserEffect,
   DroneEffect,
   HeatReductionEffect,
   RelayEffect,
@@ -254,13 +252,16 @@ export class GameEngine {
       return [];
     }
 
-    const addedCard = { id: reward.cardId };
-    this.state.deck.push(addedCard);
-    this.state.acquiredCards.push(addedCard);
+    this.resolveReward({ id: reward.cardId });
+    return [];
+  }
 
-    this.state.rewardsSeen += 1;
-    this.state.stage += 1;
-    this.startCombat();
+  skipReward(): GameEvent[] {
+    if (this.state.phase !== "reward") {
+      return [];
+    }
+
+    this.resolveReward(null);
     return [];
   }
 
@@ -717,6 +718,18 @@ export class GameEngine {
     }
 
     return this.rng.shuffle(rewards).slice(0, 3);
+  }
+
+  private resolveReward(card: DeckCard | null): void {
+    if (card) {
+      const addedCard = cloneCard(card);
+      this.state.deck.push(addedCard);
+      this.state.acquiredCards.push(addedCard);
+    }
+
+    this.state.rewardsSeen += 1;
+    this.state.stage += 1;
+    this.startCombat();
   }
 
   private makeCardReward(): RewardOption {

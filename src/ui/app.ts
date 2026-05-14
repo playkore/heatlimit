@@ -74,6 +74,7 @@ export function bootstrapApp(): void {
       debugDeckOpen,
       selectedSaveCardIndex,
       chooseReward,
+      skipReward,
       chooseSaveCard,
       addDebugCard,
       removeDebugCard,
@@ -167,6 +168,16 @@ export function bootstrapApp(): void {
     }
 
     game.chooseReward(index);
+    deckOpen = false;
+    render("draw");
+  }
+
+  function skipReward() {
+    if (busy || game.state.phase !== "reward") {
+      return;
+    }
+
+    game.skipReward();
     deckOpen = false;
     render("draw");
   }
@@ -432,6 +443,7 @@ function renderOverlay(
   debugDeckOpen: boolean,
   selectedSaveCardIndex: number | null,
   onChooseReward: (index: number) => void,
+  onSkipReward: () => void,
   onChooseSaveCard: (index: number) => void,
   onAddDebugCard: (cardId: CardId) => void,
   onRemoveDebugCard: (index: number) => void,
@@ -509,6 +521,19 @@ function renderOverlay(
     });
     ui.rewardList.appendChild(button);
   });
+
+  const skipButton = document.createElement("button");
+  skipButton.type = "button";
+  skipButton.className = "reward-button reward-skip-button";
+  skipButton.innerHTML = `
+    <div class="reward-icon">⏭</div>
+    <div>
+      <div class="reward-name">ПРОПУСТИТЬ</div>
+      <div class="reward-desc">Не брать новую карту в колоду.</div>
+    </div>
+  `;
+  skipButton.addEventListener("click", onSkipReward);
+  ui.rewardList.appendChild(skipButton);
 }
 
 function renderActiveEffects(

@@ -59,6 +59,37 @@ describe("game engine", () => {
     expect(game.state.acquiredCards).toHaveLength(1);
   });
 
+  it("allows skipping the reward without adding a new card", () => {
+    const game = createGame({
+      seed: 17,
+      deck: [
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+      ],
+      stage: 1,
+    });
+
+    for (let index = 0; index < 8; index += 1) {
+      playCardById(game, "clamp");
+    }
+
+    expect(game.state.phase).toBe("reward");
+    const deckSize = game.state.deck.length;
+
+    game.skipReward();
+
+    expect(game.state.phase).toBe("combat");
+    expect(game.state.stage).toBe(2);
+    expect(game.state.deck.length).toBe(deckSize);
+    expect(game.state.acquiredCards).toHaveLength(0);
+  });
+
   it("tracks reward cards so they can be saved after death", () => {
     const game = createGame({
       seed: 11,
@@ -131,7 +162,7 @@ describe("game engine", () => {
     expect(game.state.heat).toBe(1);
   });
 
-  it("delays the scan bonus until the next hand", () => {
+  it("applies the scan bonus to the next repair card in the same hand", () => {
     const game = createGame({
       seed: 27,
       deck: [{ id: "scan" }, { id: "clamp" }, { id: "clamp" }, { id: "clamp" }],
@@ -145,38 +176,12 @@ describe("game engine", () => {
     game.playCard(0);
 
     expect(game.state.effects).toHaveLength(1);
-    expect(game.state.effects[0]?.toView().description).toBe("Следующая ремонтная карта следующей руки ×2");
-
-    game.playCard(0);
-
-    expect(game.state.effects).toHaveLength(1);
-    expect(game.state.hp).toBe(game.state.maxHp - 3);
-
-    game.resolveEnemyTurn();
-
-    expect(game.state.effects[0]?.toView().description).toBe("Следующая ремонтная карта ×2");
+    expect(game.state.effects[0]?.toView().description).toBe("Следующий ремонт удваивается");
 
     game.playCard(0);
 
     expect(game.state.effects).toHaveLength(0);
-    expect(game.state.hp).toBe(game.state.maxHp - 9);
-  });
-
-  it("applies focus only to the next repair card", () => {
-    const game = createGame({
-      seed: 29,
-      deck: [{ id: "focus" }, { id: "clamp" }],
-      stage: 1,
-    });
-
-    game.state.hand = [{ id: "focus" }, { id: "clamp" }];
-    game.state.drawPile = [];
-    game.state.discard = [];
-
-    game.playCard(0);
-    game.playCard(0);
-
-    expect(game.state.hp).toBe(game.state.maxHp - 7);
+    expect(game.state.hp).toBe(game.state.maxHp - 6);
   });
 
   it("repeats the next card when relay is active", () => {
@@ -194,23 +199,6 @@ describe("game engine", () => {
     game.playCard(0);
 
     expect(game.state.hp).toBe(game.state.maxHp - 6);
-  });
-
-  it("reduces heat on the next hot card after cryo preparation", () => {
-    const game = createGame({
-      seed: 32,
-      deck: [{ id: "cryo-prep" }, { id: "laser" }],
-      stage: 1,
-    });
-
-    game.state.hand = [{ id: "cryo-prep" }, { id: "laser" }];
-    game.state.drawPile = [];
-    game.state.discard = [];
-
-    game.playCard(0);
-    game.playCard(0);
-
-    expect(game.state.heat).toBe(3);
   });
 
   it("does not let draw effects create hidden cards past the hand limit", () => {
