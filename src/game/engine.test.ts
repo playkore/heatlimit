@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createGame } from "./engine";
 import { playCardById, runScenario } from "./scenario";
 import { HAND_SIZE } from "./data";
+import { createSequenceRng } from "./rng";
 
 describe("game engine", () => {
   it("plays a seeded run and advances to the next stage deterministically", () => {
@@ -57,6 +58,32 @@ describe("game engine", () => {
     expect(game.state.stage).toBe(2);
     expect(game.state.deck.length).toBe(9);
     expect(game.state.acquiredCards).toHaveLength(1);
+  });
+
+  it("does not duplicate cards in the reward window", () => {
+    const game = createGame({
+      seed: 7,
+      rng: createSequenceRng(Array.from({ length: 64 }, () => 0)),
+      deck: [
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+        { id: "clamp" },
+      ],
+      stage: 1,
+    });
+
+    for (let index = 0; index < 8; index += 1) {
+      playCardById(game, "clamp");
+    }
+
+    expect(game.state.phase).toBe("reward");
+    expect(game.state.pendingRewards).toHaveLength(3);
+    expect(new Set(game.state.pendingRewards.map((reward) => reward.cardId)).size).toBe(3);
   });
 
   it("allows skipping the reward without adding a new card", () => {

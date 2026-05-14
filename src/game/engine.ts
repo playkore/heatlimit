@@ -711,13 +711,19 @@ export class GameEngine {
   }
 
   private makeRewards(): RewardOption[] {
-    const rewards: RewardOption[] = [this.makeCardReward()];
+    const rewards: RewardOption[] = [];
+    const availableCards = [...cardRewardPool];
 
-    while (rewards.length < 3) {
-      rewards.push(this.makeCardReward());
+    while (rewards.length < 3 && availableCards.length > 0) {
+      const cardIndex = this.rng.int(availableCards.length);
+      const [cardId] = availableCards.splice(cardIndex, 1);
+
+      if (cardId) {
+        rewards.push(this.makeCardReward(cardId));
+      }
     }
 
-    return this.rng.shuffle(rewards).slice(0, 3);
+    return this.rng.shuffle(rewards);
   }
 
   private resolveReward(card: DeckCard | null): void {
@@ -732,8 +738,7 @@ export class GameEngine {
     this.startCombat();
   }
 
-  private makeCardReward(): RewardOption {
-    const cardId = this.rng.pick(cardRewardPool);
+  private makeCardReward(cardId: CardId): RewardOption {
     const card = cardDb[cardId];
     return {
       kind: "card",
