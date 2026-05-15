@@ -500,9 +500,9 @@
       min-height: 166px;
       height: 100%;
       display: grid;
-      grid-template-rows: 24px minmax(54px, 1fr) minmax(28px, auto) minmax(26px, auto) minmax(24px, auto);
-      gap: 5px;
-      padding: 10px 9px 9px;
+      grid-template-rows: auto auto auto 1fr;
+      gap: 6px;
+      padding: 10px 10px 9px;
       background:
         var(--card-surface, linear-gradient(180deg, rgba(248,242,224,0.96), rgba(189,171,118,0.9))),
         linear-gradient(180deg, rgba(255,255,255,0.1), transparent);
@@ -512,9 +512,9 @@
     .card-topline {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
       gap: 8px;
-      min-height: 24px;
+      min-height: 22px;
       min-width: 0;
     }
 
@@ -536,57 +536,11 @@
       white-space: nowrap;
     }
 
-    .card-glyph {
-      flex: 0 0 auto;
-      font-size: 18px;
-      line-height: 1;
-      color: var(--card-accent-deep, #6d5d34);
-      text-shadow: 0 0 10px var(--card-glow, rgba(255,255,255,0.1));
-    }
-
-    .card-art {
-      position: relative;
-      display: grid;
-      place-items: center;
-      border-radius: 13px;
-      min-height: 0;
-      border: 1px solid rgba(17, 17, 13, 0.72);
-      background:
-        radial-gradient(circle at 50% 45%, rgba(255,255,255,0.14), transparent 26%),
-        linear-gradient(180deg, color-mix(in srgb, var(--card-accent-deep, #6d5d34) 24%, #151813), #0d0f0c);
-      overflow: hidden;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
-    }
-
-    .card-art::before {
-      content: "";
-      position: absolute;
-      inset: 8px;
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.1);
-      background:
-        radial-gradient(circle at 50% 45%, rgba(255,255,255,0.06), transparent 35%),
-        repeating-linear-gradient(180deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 19px);
-      opacity: 0.8;
-    }
-
-    .card-art-core {
-      position: relative;
-      z-index: 1;
-      font-size: 44px;
-      line-height: 1;
-      color: var(--card-accent-soft, #f2e4af);
-      text-shadow:
-        0 0 18px var(--card-glow, rgba(255,255,255,0.18)),
-        0 2px 0 rgba(0,0,0,0.42);
-      filter: drop-shadow(0 0 14px var(--card-glow, rgba(255,255,255,0.18)));
-    }
-
     .card-name {
-      align-self: center;
+      align-self: end;
       text-align: center;
-      font-size: clamp(16px, calc(135cqw / var(--card-name-length, 6)), 24px);
-      line-height: 0.9;
+      font-size: clamp(19px, calc(150cqw / var(--card-name-length, 6)), 28px);
+      line-height: 0.88;
       color: #11110d;
       max-width: 100%;
       min-width: 0;
@@ -595,15 +549,15 @@
     }
 
     .card-icon {
-      align-self: center;
-      font-size: 12px;
-      line-height: 1.05;
+      align-self: start;
+      font-size: 13px;
+      line-height: 1.1;
       font-weight: 900;
-      padding: 0 2px;
+      padding: 0 4px;
       min-height: 0;
       display: -webkit-box;
       -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
+      -webkit-line-clamp: 3;
       overflow: hidden;
       text-align: center;
       color: rgba(17, 17, 13, 0.8);

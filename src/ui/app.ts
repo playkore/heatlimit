@@ -1167,10 +1167,6 @@ function cardMarkup(card: ResolvedCard): string {
     <div class="card-frame" style="--card-accent:${theme.accent};--card-accent-soft:${theme.accentSoft};--card-accent-deep:${theme.accentDeep};--card-glow:${theme.glow};--card-surface:${theme.surface}">
       <div class="card-topline">
         <span class="card-chip">${theme.label}</span>
-        <span class="card-glyph">${theme.symbol}</span>
-      </div>
-      <div class="card-art" aria-hidden="true">
-        <div class="card-art-core">${theme.symbol}</div>
       </div>
       <div class="card-name" style="--card-name-length:${card.name.length}">${card.name}</div>
       <div class="card-icon">${card.description}</div>
