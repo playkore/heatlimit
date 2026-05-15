@@ -1,0 +1,103 @@
+- main [ref=e2]:
+  - generic:
+    - button:
+      - generic:
+        - generic:
+          - generic: МЕХАНИКА
+          - generic: ⟐
+        - generic:
+          - generic: ⟐
+        - generic: ЗАЖИМ
+        - generic: Ремонтирует на 3 ед.
+        - generic:
+          - generic:
+            - generic: 🔧
+            - generic: "+3"
+    - button:
+      - generic:
+        - generic:
+          - generic: ТЕРМ.
+          - generic: ❄
+        - generic:
+          - generic: ❄
+        - generic: ОХЛАД.
+        - generic: Охлаждает мультитул на 3 ед.
+        - generic:
+          - generic:
+            - generic: 🔥
+            - generic: "-3"
+    - button:
+      - generic:
+        - generic:
+          - generic: РЕМОНТ
+          - generic: ▣
+        - generic:
+          - generic: ▣
+        - generic: ЗАПЛАТКА
+        - generic: Ремонтирует на 4 ед.
+        - generic:
+          - generic:
+            - generic: 🔧
+            - generic: "+4"
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: ЗАБЕГ 1 · СПУТНИК 1/5
+        - button "МЕНЮ" [ref=e7]
+        - generic [ref=e8]: ХОД 0/2
+      - generic [ref=e10]:
+        - generic [ref=e11]: 🔥 ПЕРЕГРЕВ
+        - generic [ref=e12]: 0/15
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]: ПРОБОЙ ТРУБЫ
+        - generic [ref=e17]: "обычная авария · цикл: 🔥+2"
+      - generic [ref=e20]: 🧊
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - generic [ref=e23]: ПРОГРЕСС РЕМОНТА
+          - generic [ref=e24]: 0/22
+        - generic [ref=e26]: ✎ Лёд держит трещину, но труба разваливается.
+    - generic [ref=e27]:
+      - generic [ref=e28]:
+        - button "МЕХАНИКА ⟐ ЗАЖИМ Ремонтирует на 3 ед. 🔧 +3" [ref=e29]:
+          - generic [ref=e30]:
+            - generic [ref=e31]:
+              - generic [ref=e32]: МЕХАНИКА
+              - generic [ref=e33]: ⟐
+            - generic [ref=e35]: ⟐
+            - generic [ref=e36]: ЗАЖИМ
+            - generic [ref=e37]: Ремонтирует на 3 ед.
+            - generic [ref=e39]:
+              - generic [ref=e40]: 🔧
+              - generic [ref=e41]: "+3"
+        - button "ТЕРМ. ❄ ОХЛАД. Охлаждает мультитул на 3 ед. 🔥 -3" [ref=e42]:
+          - generic [ref=e43]:
+            - generic [ref=e44]:
+              - generic [ref=e45]: ТЕРМ.
+              - generic [ref=e46]: ❄
+            - generic [ref=e48]: ❄
+            - generic [ref=e49]: ОХЛАД.
+            - generic [ref=e50]: Охлаждает мультитул на 3 ед.
+            - generic [ref=e52]:
+              - generic [ref=e53]: 🔥
+              - generic [ref=e54]: "-3"
+        - button "РЕМОНТ ▣ ЗАПЛАТКА Ремонтирует на 4 ед. 🔧 +4" [ref=e55]:
+          - generic [ref=e56]:
+            - generic [ref=e57]:
+              - generic [ref=e58]: РЕМОНТ
+              - generic [ref=e59]: ▣
+            - generic [ref=e61]: ▣
+            - generic [ref=e62]: ЗАПЛАТКА
+            - generic [ref=e63]: Ремонтирует на 4 ед.
+            - generic [ref=e65]:
+              - generic [ref=e66]: 🔧
+              - generic [ref=e67]: "+4"
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - generic [ref=e70]: Доступно
+          - generic [ref=e71]: "5"
+        - button "МУЛЬТИТУЛ" [ref=e72]
+        - generic [ref=e73]:
+          - generic [ref=e74]: Остывают
+          - generic [ref=e75]: "0"

@@ -14,6 +14,203 @@ const TARGET_DISCARD_RATIO = 0.36;
 const PILE_MARGIN = 6;
 const DEBUG_CARD_IDS = Object.keys(cardDb) as CardId[];
 
+type CardTheme = {
+  accent: string;
+  accentSoft: string;
+  accentDeep: string;
+  glow: string;
+  label: string;
+  symbol: string;
+  surface: string;
+};
+
+type DefectTheme = {
+  accent: string;
+  accentSoft: string;
+  accentDeep: string;
+  glow: string;
+  label: string;
+  symbol: string;
+  surface: string;
+};
+
+const CARD_THEMES: Record<CardId, CardTheme> = {
+  clamp: {
+    accent: "#d0c18a",
+    accentSoft: "#efe7c8",
+    accentDeep: "#7a6435",
+    glow: "rgba(208, 193, 138, 0.42)",
+    label: "МЕХАНИКА",
+    symbol: "⟐",
+    surface: "linear-gradient(180deg, rgba(246,238,210,0.92), rgba(192,170,112,0.82))",
+  },
+  scan: {
+    accent: "#6ecfe2",
+    accentSoft: "#cff6ff",
+    accentDeep: "#1f6e7b",
+    glow: "rgba(110, 207, 226, 0.45)",
+    label: "СКАН",
+    symbol: "◉",
+    surface: "linear-gradient(180deg, rgba(229,251,255,0.96), rgba(85,174,193,0.82))",
+  },
+  cool: {
+    accent: "#f39a49",
+    accentSoft: "#ffd7aa",
+    accentDeep: "#994a16",
+    glow: "rgba(243, 154, 73, 0.45)",
+    label: "ТЕРМ.",
+    symbol: "❄",
+    surface: "linear-gradient(180deg, rgba(255,232,208,0.96), rgba(201,109,46,0.84))",
+  },
+  patch: {
+    accent: "#9fbd74",
+    accentSoft: "#dcedbe",
+    accentDeep: "#596d2f",
+    glow: "rgba(159, 189, 116, 0.42)",
+    label: "РЕМОНТ",
+    symbol: "▣",
+    surface: "linear-gradient(180deg, rgba(241,246,218,0.96), rgba(121,144,82,0.84))",
+  },
+  diagnose: {
+    accent: "#92b7ff",
+    accentSoft: "#d8e5ff",
+    accentDeep: "#34518c",
+    glow: "rgba(146, 183, 255, 0.4)",
+    label: "ДИАГН.",
+    symbol: "⌘",
+    surface: "linear-gradient(180deg, rgba(232,240,255,0.96), rgba(100,128,186,0.84))",
+  },
+  impulse: {
+    accent: "#f37e51",
+    accentSoft: "#ffd0bb",
+    accentDeep: "#8f361b",
+    glow: "rgba(243, 126, 81, 0.42)",
+    label: "УДАР",
+    symbol: "✦",
+    surface: "linear-gradient(180deg, rgba(255,232,223,0.96), rgba(196,99,56,0.84))",
+  },
+  laser: {
+    accent: "#d8c06f",
+    accentSoft: "#f2e4af",
+    accentDeep: "#8a6f24",
+    glow: "rgba(216, 192, 111, 0.4)",
+    label: "ЛАЗЕР",
+    symbol: "▰",
+    surface: "linear-gradient(180deg, rgba(249,243,214,0.96), rgba(175,144,57,0.84))",
+  },
+  marking: {
+    accent: "#72d1c6",
+    accentSoft: "#d6f4ef",
+    accentDeep: "#22796e",
+    glow: "rgba(114, 209, 198, 0.42)",
+    label: "МЕТКА",
+    symbol: "◎",
+    surface: "linear-gradient(180deg, rgba(229,250,246,0.96), rgba(93,170,160,0.84))",
+  },
+  drone: {
+    accent: "#9b8adf",
+    accentSoft: "#e2dcff",
+    accentDeep: "#52438f",
+    glow: "rgba(155, 138, 223, 0.42)",
+    label: "ДРОН",
+    symbol: "◍",
+    surface: "linear-gradient(180deg, rgba(240,235,255,0.96), rgba(124,103,191,0.84))",
+  },
+  radiator: {
+    accent: "#8ead63",
+    accentSoft: "#ddebbf",
+    accentDeep: "#4e6a24",
+    glow: "rgba(142, 173, 99, 0.4)",
+    label: "РАД.",
+    symbol: "▭",
+    surface: "linear-gradient(180deg, rgba(237,243,216,0.96), rgba(104,131,70,0.84))",
+  },
+  bypass: {
+    accent: "#b79458",
+    accentSoft: "#efe0b8",
+    accentDeep: "#715225",
+    glow: "rgba(183, 148, 88, 0.38)",
+    label: "ОБХОД",
+    symbol: "↺",
+    surface: "linear-gradient(180deg, rgba(249,238,208,0.96), rgba(168,130,71,0.84))",
+  },
+  "red-zone": {
+    accent: "#ea5d2e",
+    accentSoft: "#ffd5bf",
+    accentDeep: "#9f3010",
+    glow: "rgba(234, 93, 46, 0.42)",
+    label: "СИГНАЛ",
+    symbol: "⛔",
+    surface: "linear-gradient(180deg, rgba(255,233,223,0.96), rgba(201,87,45,0.84))",
+  },
+  relay: {
+    accent: "#7ed2a8",
+    accentSoft: "#d9f5e5",
+    accentDeep: "#296442",
+    glow: "rgba(126, 210, 168, 0.42)",
+    label: "РЕЛЕ",
+    symbol: "⇄",
+    surface: "linear-gradient(180deg, rgba(228,247,238,0.96), rgba(97,168,126,0.84))",
+  },
+  weld: {
+    accent: "#c37f5d",
+    accentSoft: "#f2d1bf",
+    accentDeep: "#7a3f25",
+    glow: "rgba(195, 127, 93, 0.42)",
+    label: "СВАРКА",
+    symbol: "⌁",
+    surface: "linear-gradient(180deg, rgba(250,236,226,0.96), rgba(180,102,67,0.84))",
+  },
+  vent: {
+    accent: "#8fb4c0",
+    accentSoft: "#d8ebf0",
+    accentDeep: "#426270",
+    glow: "rgba(143, 180, 192, 0.38)",
+    label: "ВЕНТ.",
+    symbol: "≋",
+    surface: "linear-gradient(180deg, rgba(232,243,246,0.96), rgba(106,140,150,0.84))",
+  },
+};
+
+const DEFECT_THEMES: Record<string, DefectTheme> = {
+  leak: {
+    accent: "#c9b98e",
+    accentSoft: "#efe0b8",
+    accentDeep: "#6d5d34",
+    glow: "rgba(201, 185, 142, 0.38)",
+    label: "АВАРИЯ",
+    symbol: "◐",
+    surface: "linear-gradient(180deg, rgba(247,239,217,0.95), rgba(191,171,117,0.8))",
+  },
+  ice: {
+    accent: "#7db8e8",
+    accentSoft: "#d8eeff",
+    accentDeep: "#2d5f95",
+    glow: "rgba(125, 184, 232, 0.38)",
+    label: "ОБЛЕД.",
+    symbol: "❄",
+    surface: "linear-gradient(180deg, rgba(234,244,255,0.95), rgba(109,153,198,0.8))",
+  },
+  spark: {
+    accent: "#f2a15a",
+    accentSoft: "#ffd9b8",
+    accentDeep: "#8d4b19",
+    glow: "rgba(242, 161, 90, 0.38)",
+    label: "ПЕРЕГРУЗКА",
+    symbol: "⚡",
+    surface: "linear-gradient(180deg, rgba(255,241,222,0.95), rgba(197,120,52,0.8))",
+  },
+  boss: {
+    accent: "#96b074",
+    accentSoft: "#dce9bd",
+    accentDeep: "#4f6231",
+    glow: "rgba(150, 176, 116, 0.38)",
+    label: "БИРКА",
+    symbol: "☢",
+    surface: "linear-gradient(180deg, rgba(240,246,218,0.95), rgba(118,146,82,0.8))",
+  },
+};
+
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
@@ -317,10 +514,6 @@ function createUi() {
     heatFill: get("heatFill"),
     enemyTitle: get("enemyTitle"),
     enemySubtitle: get("enemySubtitle"),
-    enemyEmoji: get("enemyEmoji"),
-    enemy: get("enemy"),
-    enemyZone: get("enemyZone"),
-    sparks: get("sparks"),
     hpText: get("hpText"),
     hpFill: get("hpFill"),
     message: get("message"),
@@ -391,11 +584,10 @@ function renderGame(
     return;
   }
 
+  applyDefectTheme(ui, defect);
   ui.stageText.textContent = `ЗАБЕГ ${runNumber} · ${defect.boss ? `БОСС ${state.stage}/${FINAL_STAGE}` : `СПУТНИК ${state.stage}/${FINAL_STAGE}`}`;
   ui.enemyTitle.textContent = defect.title;
   ui.enemySubtitle.textContent = `${defect.subtitle} · цикл: 🔥+${defect.heatPerCycle}`;
-  ui.enemyEmoji.textContent = defect.emoji;
-  ui.enemy.classList.toggle("boss", !!defect.boss);
   ui.actionsText.textContent = `${state.actions}/${MAX_ACTIONS}`;
   ui.deckButton.disabled = busy || state.phase !== "combat";
   ui.heatText.textContent = `${state.heat}/${MAX_HEAT}`;
@@ -427,6 +619,7 @@ function renderHand(
     button.disabled = busy || game.state.phase !== "combat" || game.state.actions >= MAX_ACTIONS;
     button.dataset.cardIndex = String(index);
     button.innerHTML = cardMarkup(card);
+    applyCardTheme(button, card);
     button.addEventListener("click", () => {
       playDiscardAnimation(ui, button, card);
       onPlay(index, button, card);
@@ -510,14 +703,14 @@ function renderOverlay(
     return;
   }
 
-  state.pendingRewards.forEach((reward, index) => {
+    state.pendingRewards.forEach((reward, index) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "reward-button";
-    button.dataset.rewardIndex = String(index);
-    button.innerHTML = rewardMarkup(reward);
-    button.addEventListener("click", () => {
-      onChooseReward(index);
+      button.className = "reward-button";
+      button.dataset.rewardIndex = String(index);
+      button.innerHTML = rewardMarkup(reward);
+      button.addEventListener("click", () => {
+        onChooseReward(index);
     });
     ui.rewardList.appendChild(button);
   });
@@ -582,6 +775,7 @@ function renderDeckList(ui: Ui, deck: readonly DeckCard[]): void {
     const row = document.createElement("div");
     row.className = "deck-entry";
     row.innerHTML = deckEntryMarkup(card, { showCount: true, showDescription: true, count: index + 1 });
+    applyCardTheme(row, card);
     ui.rewardList.appendChild(row);
   });
 }
@@ -635,6 +829,7 @@ function renderDebugDeckManager(
     const row = document.createElement("div");
     row.className = "deck-entry debug-deck-entry";
     row.innerHTML = deckEntryMarkup(card, { showCount: false, showDescription: true });
+    applyCardTheme(row, card);
 
     const removeButton = document.createElement("button");
     removeButton.type = "button";
@@ -682,6 +877,7 @@ function renderSaveCardList(
     button.className = `reward-button save-button ${selectedSaveCardIndex === index ? "selected" : ""}`;
     button.disabled = selectedSaveCardIndex !== null;
     button.innerHTML = saveCardMarkup(card);
+    applyCardTheme(button, card);
     button.addEventListener("click", () => {
       onChooseSaveCard(index);
     });
@@ -690,8 +886,10 @@ function renderSaveCardList(
 }
 
 function saveCardMarkup(card: ResolvedCard): string {
+  const theme = getCardTheme(card);
+
   return `
-    <div class="reward-icon">${card.description}</div>
+    <div class="reward-icon" style="--card-accent:${theme.accent};--card-accent-soft:${theme.accentSoft};--card-accent-deep:${theme.accentDeep};--card-glow:${theme.glow};">${theme.symbol}</div>
     <div>
       <div class="reward-name">${card.name}</div>
       <div class="reward-desc">${card.effects
@@ -703,7 +901,7 @@ function saveCardMarkup(card: ResolvedCard): string {
 
 function rewardMarkup(reward: RewardOption): string {
   return `
-    <div class="reward-icon">${reward.description}</div>
+    <div class="reward-icon">⟡</div>
     <div>
       <div class="reward-name">${reward.name}</div>
       <div class="reward-desc">${reward.desc}</div>
@@ -718,57 +916,60 @@ function showBanner(ui: Ui, text: string): void {
   ui.cycleBanner.classList.add("show");
 }
 
+function applyCardTheme(node: HTMLElement, card: ResolvedCard): void {
+  const theme = getCardTheme(card);
+  node.style.setProperty("--card-accent", theme.accent);
+  node.style.setProperty("--card-accent-soft", theme.accentSoft);
+  node.style.setProperty("--card-accent-deep", theme.accentDeep);
+  node.style.setProperty("--card-glow", theme.glow);
+  node.style.setProperty("--card-surface", theme.surface);
+  node.dataset.cardTheme = card.id;
+}
+
+function applyDefectTheme(ui: Ui, defect: { id: string; boss?: boolean }): void {
+  const theme = getDefectTheme(defect);
+  ui.phone.style.setProperty("--scene-accent", theme.accent);
+  ui.phone.style.setProperty("--scene-accent-soft", theme.accentSoft);
+  ui.phone.style.setProperty("--scene-accent-deep", theme.accentDeep);
+  ui.phone.style.setProperty("--scene-glow", theme.glow);
+  ui.phone.style.setProperty("--scene-surface", theme.surface);
+  ui.phone.style.setProperty("--scene-symbol", theme.symbol);
+  ui.phone.style.setProperty("--scene-label", theme.label);
+  ui.phone.dataset.defect = defect.id;
+}
+
+function getCardTheme(card: ResolvedCard): CardTheme {
+  return CARD_THEMES[card.id as CardId] ?? CARD_THEMES.clamp;
+}
+
+function getDefectTheme(defect: { id: string; boss?: boolean }): DefectTheme {
+  if (defect.boss) {
+    return DEFECT_THEMES.boss;
+  }
+
+  return DEFECT_THEMES[defect.id] ?? DEFECT_THEMES.leak;
+}
+
 function floatText(ui: Ui, text: string, tone: string): void {
   const node = document.createElement("div");
   node.className = `float-text ${tone}`;
   node.textContent = text;
-  ui.enemyZone.appendChild(node);
+  ui.phone.appendChild(node);
   window.setTimeout(() => node.remove(), 720);
 }
 
 function enemyHit(ui: Ui, amount: number): void {
-  animateEnemyHit(ui);
   floatText(ui, `🔧-${amount}`, "");
-  spawnSparks(ui, 12);
 }
 
 function enemyPulse(ui: Ui): void {
-  animateEnemyPulse(ui);
-  spawnSparks(ui, 5);
-}
-
-function animateEnemyHit(ui: Ui): void {
-  ui.enemy.classList.remove("hit");
-  void ui.enemy.offsetWidth;
-  ui.enemy.classList.add("hit");
-}
-
-function animateEnemyPulse(ui: Ui): void {
-  ui.enemy.classList.remove("pulse");
-  void ui.enemy.offsetWidth;
-  ui.enemy.classList.add("pulse");
+  floatText(ui, "⚑", "heat");
 }
 
 function shake(ui: Ui): void {
   ui.phone.classList.remove("shake");
   void ui.phone.offsetWidth;
   ui.phone.classList.add("shake");
-}
-
-function spawnSparks(ui: Ui, count: number): void {
-  ui.sparks.innerHTML = "";
-  for (let index = 0; index < count; index += 1) {
-    const spark = document.createElement("div");
-    spark.className = "spark";
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 45 + Math.random() * 82;
-    spark.style.setProperty("--x", `${Math.cos(angle) * dist}px`);
-    spark.style.setProperty("--y", `${Math.sin(angle) * dist}px`);
-    ui.sparks.appendChild(spark);
-  }
-  window.setTimeout(() => {
-    ui.sparks.innerHTML = "";
-  }, 500);
 }
 
 function snapshotState(state: {
@@ -960,17 +1161,28 @@ function playDiscardAnimation(ui: Ui, source: HTMLButtonElement, card: ResolvedC
 }
 
 function cardMarkup(card: ResolvedCard): string {
+  const theme = getCardTheme(card);
+
   return `
-    <div class="card-name">${card.name}</div>
-    <div class="card-icon">${card.description}</div>
-    <div class="card-effects">
-      ${card.effects
-        .map(
-          (effect) => `
-            <div class="effect-line"><span class="emoji">${effect.icon}</span><span>${effect.text}</span></div>
-          `,
-        )
-        .join("")}
+    <div class="card-frame" style="--card-accent:${theme.accent};--card-accent-soft:${theme.accentSoft};--card-accent-deep:${theme.accentDeep};--card-glow:${theme.glow};--card-surface:${theme.surface}">
+      <div class="card-topline">
+        <span class="card-chip">${theme.label}</span>
+        <span class="card-glyph">${theme.symbol}</span>
+      </div>
+      <div class="card-art" aria-hidden="true">
+        <div class="card-art-core">${theme.symbol}</div>
+      </div>
+      <div class="card-name" style="--card-name-length:${card.name.length}">${card.name}</div>
+      <div class="card-icon">${card.description}</div>
+      <div class="card-effects">
+        ${card.effects
+          .map(
+            (effect) => `
+              <div class="effect-line"><span class="emoji">${effect.icon}</span><span>${effect.text}</span></div>
+            `,
+          )
+          .join("")}
+      </div>
     </div>
   `;
 }
