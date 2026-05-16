@@ -2,3 +2,4 @@ codefetch
 dist
 node_modules
 .playwright-cli
+.playwright-mcp
