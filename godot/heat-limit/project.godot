@@ -25,6 +25,8 @@ window/size/viewport_width=320
 window/size/viewport_height=576
 window/size/resizable=false
 window/stretch/mode="viewport"
+window/stretch/aspect="keep"
+window/stretch/scale_mode="integer"
 window/handheld/orientation=1
 
 [editor_plugins]
@@ -33,6 +35,12 @@ enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg")
 
 [rendering]
 
+2d/snap/snap_2d_transforms_to_pixel=true
+textures/canvas_textures/default_texture_filter=1
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.231373, 0.458824, 0.231373, 1)
+
+[gui]
+
+common/snap_controls_to_pixels=true
