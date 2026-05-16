@@ -3,6 +3,11 @@ import { createGame, type GameEngine, type GameEvent, type RewardOption } from "
 import type { GameStateView, ResolvedCard } from "../game/api";
 import { appendSavedCard, buildStartingDeck, clearProfile, createDefaultProfile, loadProfile, saveProfile, type StorageLike } from "./profile";
 import type { DeckCard } from "../game/cards/helpers";
+import { BUILDING_TYPES, TILE_IDS, createDefaultWorldMap, type BuildingType, type TileId, type WorldMap } from "../world/data";
+import { createPixiWorld, type PixiWorld } from "../world/pixi-world";
+import { clearWorldMap, loadWorldMap, saveWorldMap } from "../world/world-assets";
+import { createDefaultWorldEditorState, type EditorTool, applyEditorAction } from "../world/world-editor";
+import { findFirstRuinedBuilding, getBuildingById, setBuildingState } from "../world/world-state";
 
 const sessionSeed = () => (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0;
 
@@ -252,6 +257,45 @@ export function bootstrapApp(): void {
   let menuOpen = false;
   let debugDeckOpen = false;
   let selectedSaveCardIndex: number | null = null;
+  let worldMap = loadWorldMap(storage);
+  let pixiWorld: PixiWorld | null = null;
+  let selectedBuildingId: string | null = findFirstRuinedBuilding(worldMap)?.id ?? null;
+  let editorOpen = false;
+  let editorState = createDefaultWorldEditorState();
+
+  populateWorldEditorControls();
+
+  void createPixiWorld({
+    container: ui.worldContainer,
+    map: worldMap,
+    onBuildingTap(buildingId: string) {
+      selectedBuildingId = buildingId;
+      pixiWorld?.highlightBuilding(buildingId);
+      render("refresh");
+    },
+    onWorldTap(point: { x: number; y: number }) {
+      if (!editorOpen || editorState.tool === "pan") {
+        return;
+      }
+
+      const nextMap = applyEditorAction(worldMap, editorState, point);
+      if (nextMap === worldMap) {
+        return;
+      }
+
+      worldMap = nextMap;
+      saveWorldMap(storage, worldMap);
+      if (selectedBuildingId && !getBuildingById(worldMap, selectedBuildingId)) {
+        selectedBuildingId = findFirstRuinedBuilding(worldMap)?.id ?? null;
+      }
+      syncWorld();
+      render("refresh");
+    },
+  }).then((world) => {
+    pixiWorld = world;
+    pixiWorld.updateMap(worldMap);
+    pixiWorld.highlightBuilding(selectedBuildingId);
+  });
 
   function render(reason: RenderReason = "refresh") {
     const currentSnapshot = snapshotState(game.state);
@@ -276,9 +320,102 @@ export function bootstrapApp(): void {
       addDebugCard,
       removeDebugCard,
     );
-    renderMenu(ui, menuOpen, startNewGame, openDebugDeck, closeMenu);
+    renderMenu(ui, menuOpen, editorOpen, editorState, startNewGame, openDebugDeck, toggleWorldEditor, closeMenu);
     scheduleHandAnimations(ui, previousSnapshot, currentSnapshot, reason, visibleCards);
     previousSnapshot = currentSnapshot;
+  }
+
+  function syncWorld(): void {
+    if (!pixiWorld) {
+      return;
+    }
+
+    pixiWorld.updateMap(worldMap);
+    pixiWorld.highlightBuilding(selectedBuildingId);
+  }
+
+  function populateWorldEditorControls(): void {
+    ui.editorTileSelect.innerHTML = TILE_IDS.map((tileId) => `<option value="${tileId}">${tileId}</option>`).join("");
+    ui.editorBuildingSelect.innerHTML = BUILDING_TYPES.map((buildingType) => `<option value="${buildingType}">${buildingType}</option>`).join("");
+    ui.editorTileSelect.value = editorState.tileId;
+    ui.editorBuildingSelect.value = editorState.buildingType;
+
+    const setTool = (tool: EditorTool): void => {
+      editorState = {
+        ...editorState,
+        tool,
+      };
+      render("refresh");
+    };
+
+    ui.editorToolPan.onclick = () => setTool("pan");
+    ui.editorToolPaint.onclick = () => setTool("paint-tile");
+    ui.editorToolBuild.onclick = () => setTool("place-building");
+    ui.editorToolToggle.onclick = () => setTool("toggle-building");
+    ui.editorToolErase.onclick = () => setTool("erase-building");
+    ui.editorTileSelect.onchange = () => {
+      editorState = {
+        ...editorState,
+        tileId: ui.editorTileSelect.value as TileId,
+      };
+      render("refresh");
+    };
+    ui.editorBuildingSelect.onchange = () => {
+      editorState = {
+        ...editorState,
+        buildingType: ui.editorBuildingSelect.value as BuildingType,
+      };
+      render("refresh");
+    };
+    ui.worldSaveButton.onclick = () => {
+      saveWorldMap(storage, worldMap);
+    };
+    ui.worldResetButton.onclick = () => {
+      clearWorldMap(storage);
+      worldMap = createDefaultWorldMap();
+      selectedBuildingId = findFirstRuinedBuilding(worldMap)?.id ?? null;
+      syncWorld();
+      render("refresh");
+    };
+    ui.menuWorldButton.onclick = toggleWorldEditor;
+  }
+
+  function toggleWorldEditor(): void {
+    if (busy) {
+      return;
+    }
+
+    editorOpen = !editorOpen;
+    if (editorOpen) {
+      menuOpen = true;
+      debugDeckOpen = false;
+      deckOpen = false;
+    }
+
+    render("refresh");
+  }
+
+  function applyVictoryRepair(): void {
+    const targetId = selectedBuildingId && getBuildingById(worldMap, selectedBuildingId)?.state === "ruined"
+      ? selectedBuildingId
+      : findFirstRuinedBuilding(worldMap)?.id ?? null;
+
+    if (!targetId) {
+      return;
+    }
+
+    const nextMap = setBuildingState(worldMap, targetId, "repaired");
+    if (nextMap === worldMap) {
+      selectedBuildingId = targetId;
+      pixiWorld?.highlightBuilding(targetId, 680);
+      return;
+    }
+
+    worldMap = nextMap;
+    saveWorldMap(storage, worldMap);
+    selectedBuildingId = targetId;
+    syncWorld();
+    pixiWorld?.highlightBuilding(targetId, 680);
   }
 
   function canStartNewRun(): boolean {
@@ -300,6 +437,7 @@ export function bootstrapApp(): void {
     deckOpen = false;
     debugDeckOpen = false;
     selectedSaveCardIndex = null;
+    editorOpen = false;
     render("draw");
   }
 
@@ -312,6 +450,7 @@ export function bootstrapApp(): void {
     menuOpen = false;
     debugDeckOpen = false;
     selectedSaveCardIndex = null;
+    editorOpen = false;
     render("draw");
   }
 
@@ -339,11 +478,16 @@ export function bootstrapApp(): void {
 
     busy = true;
     applyEvents(game.playCard(index));
+    const nextPhase = game.state.phase as GameStateView["phase"];
+    const nextEndReason = game.state.endReason;
+    if (nextPhase === "reward" || nextEndReason === "victory") {
+      applyVictoryRepair();
+    }
     render("play");
 
     await wait(500);
 
-    if (game.state.phase !== "combat") {
+    if (nextPhase !== "combat") {
       busy = false;
       render("refresh");
       return;
@@ -512,6 +656,7 @@ function createUi() {
     actionsText: get("actionsText"),
     heatText: get("heatText"),
     heatFill: get("heatFill"),
+    worldContainer: get("worldContainer"),
     enemyTitle: get("enemyTitle"),
     enemySubtitle: get("enemySubtitle"),
     hpText: get("hpText"),
@@ -535,7 +680,18 @@ function createUi() {
     menuOverlay: get("menuOverlay"),
     menuRestartButton: get("menuRestartButton") as HTMLButtonElement,
     menuDebugButton: get("menuDebugButton") as HTMLButtonElement,
+    menuWorldButton: get("menuWorldButton") as HTMLButtonElement,
     menuCloseButton: get("menuCloseButton") as HTMLButtonElement,
+    worldEditor: get("worldEditor"),
+    editorToolPan: get("editorToolPan") as HTMLButtonElement,
+    editorToolPaint: get("editorToolPaint") as HTMLButtonElement,
+    editorToolBuild: get("editorToolBuild") as HTMLButtonElement,
+    editorToolToggle: get("editorToolToggle") as HTMLButtonElement,
+    editorToolErase: get("editorToolErase") as HTMLButtonElement,
+    editorTileSelect: get("editorTileSelect") as HTMLSelectElement,
+    editorBuildingSelect: get("editorBuildingSelect") as HTMLSelectElement,
+    worldSaveButton: get("worldSaveButton") as HTMLButtonElement,
+    worldResetButton: get("worldResetButton") as HTMLButtonElement,
     cycleBanner: get("cycleBanner"),
   };
 }
@@ -752,11 +908,22 @@ function renderActiveEffects(
 function renderMenu(
   ui: Ui,
   open: boolean,
+  editorOpen: boolean,
+  editorState: { tool: EditorTool; tileId: TileId; buildingType: BuildingType },
   onStartNewRun: () => void,
   onOpenDebugDeck: () => void,
+  onToggleWorldEditor: () => void,
   onClose: () => void,
 ): void {
   ui.menuOverlay.classList.toggle("show", open);
+  ui.worldEditor.classList.toggle("show", editorOpen);
+  ui.editorToolPan.classList.toggle("selected", editorState.tool === "pan");
+  ui.editorToolPaint.classList.toggle("selected", editorState.tool === "paint-tile");
+  ui.editorToolBuild.classList.toggle("selected", editorState.tool === "place-building");
+  ui.editorToolToggle.classList.toggle("selected", editorState.tool === "toggle-building");
+  ui.editorToolErase.classList.toggle("selected", editorState.tool === "erase-building");
+  ui.editorTileSelect.value = editorState.tileId;
+  ui.editorBuildingSelect.value = editorState.buildingType;
   ui.menuRestartButton.disabled = false;
   ui.menuRestartButton.textContent = "НОВАЯ ИГРА";
   ui.menuRestartButton.onclick = () => {
@@ -764,6 +931,7 @@ function renderMenu(
     onClose();
   };
   ui.menuDebugButton.onclick = onOpenDebugDeck;
+  ui.menuWorldButton.onclick = onToggleWorldEditor;
   ui.menuCloseButton.onclick = onClose;
 }
 

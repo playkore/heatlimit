@@ -283,7 +283,7 @@
       border-radius: 18px;
       padding: 12px 12px 10px;
       display: grid;
-      grid-template-rows: auto auto auto auto;
+      grid-template-rows: auto minmax(0, 1fr) auto;
       gap: 10px;
       min-height: 0;
       background:
@@ -313,6 +313,27 @@
 
     .enemy-zone {
       display: none;
+    }
+
+    .world-container {
+      position: relative;
+      min-height: 220px;
+      border-radius: 16px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 30%, rgba(255,255,255,0.08), transparent 30%),
+        linear-gradient(180deg, rgba(10, 17, 15, 0.98), rgba(5, 8, 7, 0.98));
+      touch-action: none;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.12),
+        inset 0 -1px 0 rgba(0,0,0,0.34);
+    }
+
+    .world-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
     }
 
     .sparks {
@@ -757,6 +778,75 @@
       gap: 8px;
     }
 
+    .world-editor {
+      display: none;
+      gap: 10px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(17, 17, 17, 0.22);
+    }
+
+    .world-editor.show {
+      display: grid;
+    }
+
+    .world-editor-title {
+      font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+      font-size: 20px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .world-editor-tools {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .editor-tool {
+      min-height: 32px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(208, 190, 140, 0.9));
+      border-radius: 10px;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 900;
+    }
+
+    .editor-tool.selected {
+      background: linear-gradient(180deg, rgba(255, 244, 194, 0.98), rgba(225, 190, 115, 0.96));
+      box-shadow: inset 0 0 0 1px rgba(17, 17, 17, 0.2);
+    }
+
+    .world-editor-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .editor-field {
+      display: grid;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: rgba(17, 17, 17, 0.72);
+    }
+
+    .editor-field select {
+      min-height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255, 249, 228, 0.9);
+      font: inherit;
+    }
+
+    .world-editor-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
     .menu-item {
       min-height: 44px;
       border-radius: 12px;
@@ -1172,6 +1262,8 @@
           <div class="enemy-subtitle" id="enemySubtitle">в конце цикла: 🔥+2</div>
         </div>
 
+        <div class="world-container" id="worldContainer"></div>
+
         <div class="enemy-hp">
           <div class="bar-label">
             <span>ПРОГРЕСС РЕМОНТА</span>
@@ -1221,7 +1313,32 @@
         <div class="menu-actions">
           <button class="menu-item" id="menuRestartButton" type="button">НОВЫЙ ЗАПУСК</button>
           <button class="menu-item" id="menuDebugButton" type="button">ОТЛАДКА КОЛОДЫ</button>
+          <button class="menu-item" id="menuWorldButton" type="button">РЕДАКТОР КАРТЫ</button>
           <button class="menu-item" id="menuCloseButton" type="button">ЗАКРЫТЬ</button>
+        </div>
+        <div class="world-editor" id="worldEditor">
+          <div class="world-editor-title">РЕДАКТОР КАРТЫ</div>
+          <div class="world-editor-tools">
+            <button class="editor-tool selected" id="editorToolPan" type="button">PAN</button>
+            <button class="editor-tool" id="editorToolPaint" type="button">TILE</button>
+            <button class="editor-tool" id="editorToolBuild" type="button">BUILD</button>
+            <button class="editor-tool" id="editorToolToggle" type="button">TOGGLE</button>
+            <button class="editor-tool" id="editorToolErase" type="button">ERASE</button>
+          </div>
+          <div class="world-editor-grid">
+            <label class="editor-field">
+              <span>Tile</span>
+              <select id="editorTileSelect"></select>
+            </label>
+            <label class="editor-field">
+              <span>Building</span>
+              <select id="editorBuildingSelect"></select>
+            </label>
+          </div>
+          <div class="world-editor-actions">
+            <button class="menu-item" id="worldSaveButton" type="button">SAVE</button>
+            <button class="menu-item" id="worldResetButton" type="button">RESET</button>
+          </div>
         </div>
       </div>
     </div>
