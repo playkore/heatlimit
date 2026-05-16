@@ -282,6 +282,12 @@ export function bootstrapApp(): void {
         selectedBuildingId: buildingId,
       };
 
+      if (editorOpen && flow.screen === "map") {
+        syncWorld();
+        render("refresh");
+        return;
+      }
+
       if (building?.state === "ruined") {
         startBattleForBuilding(building);
         return;
@@ -345,7 +351,7 @@ export function bootstrapApp(): void {
         removeDebugCard,
         flow.screen,
       );
-      renderMenu(ui, menuOpen, editorOpen, editorState, startNewGame, openDebugDeck, toggleWorldEditor, closeMenu);
+      renderMenu(ui, menuOpen, editorOpen, editorState, flow.screen, startNewGame, openDebugDeck, toggleWorldEditor, closeMenu);
       scheduleHandAnimations(ui, previousSnapshot, currentSnapshot, reason, visibleCards);
       previousSnapshot = currentSnapshot;
       return;
@@ -367,7 +373,7 @@ export function bootstrapApp(): void {
       removeDebugCard,
       flow.screen,
     );
-    renderMenu(ui, menuOpen, editorOpen, editorState, startNewGame, openDebugDeck, toggleWorldEditor, closeMenu);
+    renderMenu(ui, menuOpen, editorOpen, editorState, flow.screen, startNewGame, openDebugDeck, toggleWorldEditor, closeMenu);
   }
 
   function syncScreenVisibility(): void {
@@ -471,7 +477,7 @@ export function bootstrapApp(): void {
   }
 
   function toggleWorldEditor(): void {
-    if (busy) {
+    if (busy || flow.screen !== "map") {
       return;
     }
 
@@ -1048,13 +1054,14 @@ function renderMenu(
   open: boolean,
   editorOpen: boolean,
   editorState: { tool: EditorTool; tileId: TileId; buildingType: BuildingType },
+  screen: ScreenFlowState["screen"],
   onStartNewRun: () => void,
   onOpenDebugDeck: () => void,
   onToggleWorldEditor: () => void,
   onClose: () => void,
 ): void {
   ui.menuOverlay.classList.toggle("show", open);
-  ui.worldEditor.classList.toggle("show", editorOpen);
+  ui.worldEditor.classList.toggle("show", editorOpen && screen === "map");
   ui.editorToolPan.classList.toggle("selected", editorState.tool === "pan");
   ui.editorToolPaint.classList.toggle("selected", editorState.tool === "paint-tile");
   ui.editorToolBuild.classList.toggle("selected", editorState.tool === "place-building");

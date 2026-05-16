@@ -64,7 +64,7 @@ export async function createPixiWorld(options: {
   const removeWorldTap = installTapRecognizer(viewport, {
     threshold: 10,
     onTap: (event) => {
-      if (event.target !== viewport || !options.onWorldTap) {
+      if (!options.onWorldTap) {
         return;
       }
 

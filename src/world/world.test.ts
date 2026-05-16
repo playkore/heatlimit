@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultWorldMap } from "./data";
 import { clearWorldMap, loadWorldMap, saveWorldMap } from "./world-assets";
+import { createDefaultWorldEditorState, applyEditorAction } from "./world-editor";
 import { eraseBuilding, paintTile, placeBuilding, setBuildingState, toggleBuildingState, getBuildingById } from "./world-state";
 
 function createStorage(initial: Record<string, string> = {}): Storage {
@@ -82,6 +83,31 @@ describe("world state", () => {
 
     expect(getBuildingById(next, "test-factory")).not.toBeNull();
     expect(getBuildingById(removed, "test-factory")).toBeNull();
+  });
+
+  it("applies editor actions to tiles and buildings", () => {
+    const map = createDefaultWorldMap();
+
+    const painted = applyEditorAction(
+      map,
+      {
+        ...createDefaultWorldEditorState(),
+        tool: "paint-tile",
+        tileId: "crater",
+      },
+      { x: 1, y: 1 },
+    );
+    const toggled = applyEditorAction(
+      map,
+      {
+        ...createDefaultWorldEditorState(),
+        tool: "toggle-building",
+      },
+      { x: 23, y: 7 },
+    );
+
+    expect(painted.tiles[1 * painted.width + 1]).toBe("crater");
+    expect(getBuildingById(toggled, "barracks-1")?.state).toBe("ruined");
   });
 
   it("returns the default map for broken storage data", () => {
