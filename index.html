@@ -104,6 +104,91 @@
       100% { transform: translate(0, 0); }
     }
 
+    .map-screen,
+    .battle-screen {
+      position: absolute;
+      inset: 12px;
+      min-height: 0;
+    }
+
+    .battle-screen {
+      display: none;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      z-index: 1;
+    }
+
+    .map-screen {
+      display: none;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      z-index: 1;
+    }
+
+    .map-screen.show,
+    .battle-screen.show {
+      display: grid;
+    }
+
+    .map-topbar,
+    .map-footer {
+      position: relative;
+      border: 1px solid var(--line);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.34),
+        0 12px 24px var(--shadow);
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(255, 248, 223, 0.92), rgba(200, 181, 134, 0.88)),
+        radial-gradient(circle at 50% 0%, rgba(255,255,255,0.25), transparent 35%);
+      border-radius: 18px;
+      padding: 10px 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .map-topbar {
+      grid-template-columns: 1fr auto;
+      align-items: center;
+    }
+
+    .map-title {
+      font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+      font-size: clamp(22px, 5.2vw, 32px);
+      line-height: 0.95;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: #16150f;
+    }
+
+    .map-hint {
+      font-size: 14px;
+      line-height: 1.15;
+      color: rgba(22, 21, 15, 0.74);
+    }
+
+    .map-footer {
+      grid-template-columns: 1fr auto;
+      align-items: center;
+    }
+
+    .map-status {
+      font-size: 13px;
+      line-height: 1.12;
+      color: rgba(22, 21, 15, 0.76);
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .map-screen .world-container {
+      min-height: 0;
+      height: 100%;
+    }
+
+    .map-screen .world-container canvas {
+      height: 100% !important;
+    }
+
     .screen {
       position: absolute;
       inset: 12px;
@@ -1240,7 +1325,24 @@
 <body>
   <main class="phone" id="phone">
     <div class="animation-layer" id="animationLayer"></div>
-    <section class="screen">
+    <section class="map-screen show" id="mapScreen">
+      <header class="map-topbar">
+        <div>
+          <div class="map-title">КАРТА УЗЛОВ</div>
+          <div class="map-hint">Тапни по повреждённой постройке, чтобы начать ремонт.</div>
+        </div>
+        <button class="menu-button" id="mapMenuButton" type="button">МЕНЮ</button>
+      </header>
+
+      <div class="world-container" id="worldContainer"></div>
+
+      <footer class="map-footer">
+        <div class="map-status" id="mapStatus">Выбери постройку на карте.</div>
+        <button class="menu-button" id="mapBattleButton" type="button">БОЙ</button>
+      </footer>
+    </section>
+
+    <section class="battle-screen" id="battleScreen" hidden>
       <header class="top-panel">
         <div class="top-row">
           <span id="stageText">СПУТНИК 1/5</span>
@@ -1261,8 +1363,6 @@
           <div class="enemy-title" id="enemyTitle">ПРОБОЙ ТРУБЫ</div>
           <div class="enemy-subtitle" id="enemySubtitle">в конце цикла: 🔥+2</div>
         </div>
-
-        <div class="world-container" id="worldContainer"></div>
 
         <div class="enemy-hp">
           <div class="bar-label">

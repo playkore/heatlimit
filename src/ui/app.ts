@@ -3,11 +3,13 @@ import { createGame, type GameEngine, type GameEvent, type RewardOption } from "
 import type { GameStateView, ResolvedCard } from "../game/api";
 import { appendSavedCard, buildStartingDeck, clearProfile, createDefaultProfile, loadProfile, saveProfile, type StorageLike } from "./profile";
 import type { DeckCard } from "../game/cards/helpers";
-import { BUILDING_TYPES, TILE_IDS, createDefaultWorldMap, type BuildingType, type TileId, type WorldMap } from "../world/data";
+import { BUILDING_TYPES, TILE_IDS, createDefaultWorldMap, type BuildingInstance, type BuildingType, type TileId, type WorldMap } from "../world/data";
+import { createBuildingEncounter } from "../world/building-encounters";
 import { createPixiWorld, type PixiWorld } from "../world/pixi-world";
 import { clearWorldMap, loadWorldMap, saveWorldMap } from "../world/world-assets";
 import { createDefaultWorldEditorState, type EditorTool, applyEditorAction } from "../world/world-editor";
 import { findFirstRuinedBuilding, getBuildingById, setBuildingState } from "../world/world-state";
+import { beginBattleForBuilding, createInitialScreenFlowState, resolveVictoryToMap, type ScreenFlowState } from "./screen-flow";
 
 const sessionSeed = () => (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0;
 
@@ -259,22 +261,37 @@ export function bootstrapApp(): void {
   let selectedSaveCardIndex: number | null = null;
   let worldMap = loadWorldMap(storage);
   let pixiWorld: PixiWorld | null = null;
-  let selectedBuildingId: string | null = findFirstRuinedBuilding(worldMap)?.id ?? null;
+  let flow: ScreenFlowState = {
+    ...createInitialScreenFlowState(),
+    selectedBuildingId: findFirstRuinedBuilding(worldMap)?.id ?? null,
+  };
   let editorOpen = false;
   let editorState = createDefaultWorldEditorState();
 
   populateWorldEditorControls();
+  syncScreenVisibility();
+  syncWorld();
 
   void createPixiWorld({
     container: ui.worldContainer,
     map: worldMap,
     onBuildingTap(buildingId: string) {
-      selectedBuildingId = buildingId;
-      pixiWorld?.highlightBuilding(buildingId);
+      const building = getBuildingById(worldMap, buildingId);
+      flow = {
+        ...flow,
+        selectedBuildingId: buildingId,
+      };
+
+      if (building?.state === "ruined") {
+        startBattleForBuilding(building);
+        return;
+      }
+
+      syncWorld();
       render("refresh");
     },
     onWorldTap(point: { x: number; y: number }) {
-      if (!editorOpen || editorState.tool === "pan") {
+      if (!editorOpen || editorState.tool === "pan" || flow.screen !== "map") {
         return;
       }
 
@@ -285,33 +302,62 @@ export function bootstrapApp(): void {
 
       worldMap = nextMap;
       saveWorldMap(storage, worldMap);
-      if (selectedBuildingId && !getBuildingById(worldMap, selectedBuildingId)) {
-        selectedBuildingId = findFirstRuinedBuilding(worldMap)?.id ?? null;
+
+      if (flow.selectedBuildingId && !getBuildingById(worldMap, flow.selectedBuildingId)) {
+        flow = {
+          ...flow,
+          selectedBuildingId: findFirstRuinedBuilding(worldMap)?.id ?? null,
+        };
       }
+
       syncWorld();
       render("refresh");
     },
   }).then((world) => {
     pixiWorld = world;
-    pixiWorld.updateMap(worldMap);
-    pixiWorld.highlightBuilding(selectedBuildingId);
+    syncWorld();
   });
 
   function render(reason: RenderReason = "refresh") {
-    const currentSnapshot = snapshotState(game.state);
-    const visibleCards = game.state.hand.slice(0, HAND_SIZE).map((cardObj) => getCardProps(cardObj));
-    const showDeck = game.state.phase === "combat" && deckOpen;
+    syncScreenVisibility();
 
-    if (game.state.phase !== "combat" && deckOpen) {
-      deckOpen = false;
+    if (flow.screen === "battle") {
+      const currentSnapshot = snapshotState(game.state);
+      const visibleCards = game.state.hand.slice(0, HAND_SIZE).map((cardObj) => getCardProps(cardObj));
+      const showDeck = game.state.phase === "combat" && deckOpen;
+
+      if (game.state.phase !== "combat" && deckOpen) {
+        deckOpen = false;
+      }
+
+      renderGame(ui, game, busy, profile.runNumber, playCard);
+      renderOverlay(
+        ui,
+        game,
+        busy,
+        showDeck,
+        debugDeckOpen,
+        selectedSaveCardIndex,
+        chooseReward,
+        skipReward,
+        chooseSaveCard,
+        addDebugCard,
+        removeDebugCard,
+        flow.screen,
+      );
+      renderMenu(ui, menuOpen, editorOpen, editorState, startNewGame, openDebugDeck, toggleWorldEditor, closeMenu);
+      scheduleHandAnimations(ui, previousSnapshot, currentSnapshot, reason, visibleCards);
+      previousSnapshot = currentSnapshot;
+      return;
     }
 
-    renderGame(ui, game, busy, profile.runNumber, playCard);
+    previousSnapshot = null;
+    renderMap();
     renderOverlay(
       ui,
       game,
       busy,
-      showDeck,
+      false,
       debugDeckOpen,
       selectedSaveCardIndex,
       chooseReward,
@@ -319,10 +365,28 @@ export function bootstrapApp(): void {
       chooseSaveCard,
       addDebugCard,
       removeDebugCard,
+      flow.screen,
     );
     renderMenu(ui, menuOpen, editorOpen, editorState, startNewGame, openDebugDeck, toggleWorldEditor, closeMenu);
-    scheduleHandAnimations(ui, previousSnapshot, currentSnapshot, reason, visibleCards);
-    previousSnapshot = currentSnapshot;
+  }
+
+  function syncScreenVisibility(): void {
+    const showBattle = flow.screen === "battle";
+    ui.mapScreen.classList.toggle("show", !showBattle);
+    ui.mapScreen.hidden = showBattle;
+    ui.battleScreen.classList.toggle("show", showBattle);
+    ui.battleScreen.hidden = !showBattle;
+  }
+
+  function resetMapTheme(): void {
+    ui.phone.style.removeProperty("--scene-accent");
+    ui.phone.style.removeProperty("--scene-accent-soft");
+    ui.phone.style.removeProperty("--scene-accent-deep");
+    ui.phone.style.removeProperty("--scene-glow");
+    ui.phone.style.removeProperty("--scene-surface");
+    ui.phone.style.removeProperty("--scene-symbol");
+    ui.phone.style.removeProperty("--scene-label");
+    delete ui.phone.dataset.defect;
   }
 
   function syncWorld(): void {
@@ -331,7 +395,30 @@ export function bootstrapApp(): void {
     }
 
     pixiWorld.updateMap(worldMap);
-    pixiWorld.highlightBuilding(selectedBuildingId);
+    if (flow.selectedBuildingId && getBuildingById(worldMap, flow.selectedBuildingId)) {
+      pixiWorld.highlightBuilding(flow.selectedBuildingId);
+      return;
+    }
+
+    pixiWorld.highlightBuilding(null);
+  }
+
+  function renderMap(): void {
+    resetMapTheme();
+
+    const selectedBuilding = flow.selectedBuildingId ? getBuildingById(worldMap, flow.selectedBuildingId) : null;
+    if (!selectedBuilding && flow.selectedBuildingId) {
+      flow = {
+        ...flow,
+        selectedBuildingId: findFirstRuinedBuilding(worldMap)?.id ?? null,
+      };
+    }
+
+    const building = flow.selectedBuildingId ? getBuildingById(worldMap, flow.selectedBuildingId) : null;
+    ui.mapStatus.textContent = building
+      ? `${building.type.toUpperCase()} · ${building.state === "ruined" ? "можно начать бой" : "уже восстановлено"}`
+      : "Выбери постройку на карте.";
+    ui.mapBattleButton.disabled = !building || building.state !== "ruined";
   }
 
   function populateWorldEditorControls(): void {
@@ -373,7 +460,10 @@ export function bootstrapApp(): void {
     ui.worldResetButton.onclick = () => {
       clearWorldMap(storage);
       worldMap = createDefaultWorldMap();
-      selectedBuildingId = findFirstRuinedBuilding(worldMap)?.id ?? null;
+      flow = {
+        ...flow,
+        selectedBuildingId: findFirstRuinedBuilding(worldMap)?.id ?? null,
+      };
       syncWorld();
       render("refresh");
     };
@@ -395,27 +485,50 @@ export function bootstrapApp(): void {
     render("refresh");
   }
 
-  function applyVictoryRepair(): void {
-    const targetId = selectedBuildingId && getBuildingById(worldMap, selectedBuildingId)?.state === "ruined"
-      ? selectedBuildingId
-      : findFirstRuinedBuilding(worldMap)?.id ?? null;
-
-    if (!targetId) {
-      return;
+  function startBattleForBuilding(building: BuildingInstance): void {
+    if (game.state.phase !== "combat") {
+      game.startRun();
     }
 
-    const nextMap = setBuildingState(worldMap, targetId, "repaired");
-    if (nextMap === worldMap) {
-      selectedBuildingId = targetId;
-      pixiWorld?.highlightBuilding(targetId, 680);
-      return;
-    }
-
-    worldMap = nextMap;
-    saveWorldMap(storage, worldMap);
-    selectedBuildingId = targetId;
+    flow = beginBattleForBuilding(flow, building);
+    configureBattleEncounter(building);
+    deckOpen = false;
+    menuOpen = false;
+    debugDeckOpen = false;
+    editorOpen = false;
+    syncScreenVisibility();
     syncWorld();
-    pixiWorld?.highlightBuilding(targetId, 680);
+    render("draw");
+  }
+
+  function configureBattleEncounter(building: BuildingInstance): void {
+    const encounter = createBuildingEncounter(building);
+    game.state.phase = "combat";
+    game.state.defect = encounter;
+    game.state.maxHp = encounter.hp;
+    game.state.hp = encounter.hp;
+    game.state.actions = 0;
+    game.state.cycleShield = 0;
+    game.state.pendingRewards = [];
+    game.state.endReason = null;
+    game.state.bannerText = "";
+    game.state.overlayTitle = "";
+    game.state.overlayText = "";
+    game.state.messageHtml = encounter.text;
+  }
+
+  function finishBattleVictory(): void {
+    const resolved = resolveVictoryToMap(flow, worldMap, flow.activeBattleBuildingId ?? flow.selectedBuildingId);
+    flow = resolved.state;
+    worldMap = resolved.map;
+    saveWorldMap(storage, worldMap);
+    deckOpen = false;
+    menuOpen = false;
+    debugDeckOpen = false;
+    editorOpen = false;
+    syncScreenVisibility();
+    syncWorld();
+    render("refresh");
   }
 
   function canStartNewRun(): boolean {
@@ -437,7 +550,14 @@ export function bootstrapApp(): void {
     deckOpen = false;
     debugDeckOpen = false;
     selectedSaveCardIndex = null;
+    menuOpen = false;
     editorOpen = false;
+    flow = {
+      ...createInitialScreenFlowState(),
+      selectedBuildingId: findFirstRuinedBuilding(worldMap)?.id ?? null,
+    };
+    syncScreenVisibility();
+    syncWorld();
     render("draw");
   }
 
@@ -450,7 +570,15 @@ export function bootstrapApp(): void {
     menuOpen = false;
     debugDeckOpen = false;
     selectedSaveCardIndex = null;
+    clearWorldMap(storage);
+    worldMap = createDefaultWorldMap();
+    flow = {
+      ...createInitialScreenFlowState(),
+      selectedBuildingId: findFirstRuinedBuilding(worldMap)?.id ?? null,
+    };
     editorOpen = false;
+    syncScreenVisibility();
+    syncWorld();
     render("draw");
   }
 
@@ -472,17 +600,13 @@ export function bootstrapApp(): void {
   }
 
   async function playCard(index: number) {
-    if (busy || game.state.phase !== "combat") {
+    if (busy || flow.screen !== "battle" || game.state.phase !== "combat") {
       return;
     }
 
     busy = true;
     applyEvents(game.playCard(index));
     const nextPhase = game.state.phase as GameStateView["phase"];
-    const nextEndReason = game.state.endReason;
-    if (nextPhase === "reward" || nextEndReason === "victory") {
-      applyVictoryRepair();
-    }
     render("play");
 
     await wait(500);
@@ -504,23 +628,23 @@ export function bootstrapApp(): void {
   }
 
   function chooseReward(index: number) {
-    if (busy || game.state.phase !== "reward") {
+    if (busy || flow.screen !== "battle" || game.state.phase !== "reward") {
       return;
     }
 
     game.chooseReward(index);
     deckOpen = false;
-    render("draw");
+    finishBattleVictory();
   }
 
   function skipReward() {
-    if (busy || game.state.phase !== "reward") {
+    if (busy || flow.screen !== "battle" || game.state.phase !== "reward") {
       return;
     }
 
     game.skipReward();
     deckOpen = false;
-    render("draw");
+    finishBattleVictory();
   }
 
   function chooseSaveCard(index: number) {
@@ -540,7 +664,7 @@ export function bootstrapApp(): void {
   }
 
   function openDeck() {
-    if (busy || game.state.phase !== "combat") {
+    if (busy || flow.screen !== "battle" || game.state.phase !== "combat") {
       return;
     }
 
@@ -616,7 +740,14 @@ export function bootstrapApp(): void {
     render("refresh");
   }
 
+  ui.mapMenuButton.addEventListener("click", openMenu);
   ui.menuButton.addEventListener("click", openMenu);
+  ui.mapBattleButton.addEventListener("click", () => {
+    const building = flow.selectedBuildingId ? getBuildingById(worldMap, flow.selectedBuildingId) : null;
+    if (building && building.state === "ruined") {
+      startBattleForBuilding(building);
+    }
+  });
   ui.restartButton.addEventListener("click", startNewRun);
   ui.deckButton.addEventListener("click", openDeck);
   ui.overlayCloseButton.addEventListener("click", () => {
@@ -638,6 +769,7 @@ export function bootstrapApp(): void {
       closeDeck();
     }
   });
+
   render("draw");
 }
 
@@ -652,11 +784,16 @@ function createUi() {
 
   return {
     phone: get("phone"),
+    mapScreen: get("mapScreen"),
+    battleScreen: get("battleScreen"),
     stageText: get("stageText"),
     actionsText: get("actionsText"),
     heatText: get("heatText"),
     heatFill: get("heatFill"),
     worldContainer: get("worldContainer"),
+    mapMenuButton: get("mapMenuButton") as HTMLButtonElement,
+    mapBattleButton: get("mapBattleButton") as HTMLButtonElement,
+    mapStatus: get("mapStatus"),
     enemyTitle: get("enemyTitle"),
     enemySubtitle: get("enemySubtitle"),
     hpText: get("hpText"),
@@ -796,9 +933,10 @@ function renderOverlay(
   onChooseSaveCard: (index: number) => void,
   onAddDebugCard: (cardId: CardId) => void,
   onRemoveDebugCard: (index: number) => void,
+  screen: ScreenFlowState["screen"],
 ): void {
   const state = game.state;
-  const visible = debugDeckOpen || state.phase !== "combat" || showDeck;
+  const visible = screen === "battle" && (debugDeckOpen || state.phase !== "combat" || showDeck);
   ui.overlay.classList.toggle("show", visible);
   ui.overlay.classList.toggle("deck-mode", showDeck || debugDeckOpen);
 
